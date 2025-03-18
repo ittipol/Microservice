@@ -1,0 +1,43 @@
+services:
+  go-application:
+    build: .
+    container_name: go-application
+    restart: unless-stopped
+    environment:
+      APP_PORT: "3000"
+      APP_DSN_PATH: "/secrets/sql-create-user-role"
+      APP_SECRET_PATH: "/secrets/jwt-secret-key"
+      APP_OTEL_COL_ENDPOINT: ""
+    ports:
+      - 3000:3000
+    volumes:
+      - ./secrets:/secrets
+    depends_on:
+      - postgres-database
+    networks:
+      - go-app-network
+
+  postgres-database:
+    image: postgres:15.2-alpine3.17
+    container_name: postgres-database
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: postgresdb
+    volumes:
+      - postgresql:/var/lib/postgresql
+      - postgresql_data:/var/lib/postgresql/data
+    networks:
+      go-app-network:
+        aliases:
+          - postgres
+
+networks:
+  go-app-network:
+    driver: bridge
+
+volumes:
+  postgresql:
+    external: false
+  postgresql_data:
+    external: false

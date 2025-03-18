@@ -1,0 +1,1 @@
+kubectl port-forward svc/go-app-server -n go-app 5055:5055

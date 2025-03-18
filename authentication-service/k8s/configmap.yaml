@@ -1,0 +1,10 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: go-app-config
+  namespace: go-app
+data:
+  app_port: "3000"
+  app_dsn_path: /vault/secrets/sql-create-user-role
+  app_secret_path: /vault/secrets/jwt-secret-key
+  app_otel_col_endpoint: opentelemetry-collector.otelcol.svc:4317
