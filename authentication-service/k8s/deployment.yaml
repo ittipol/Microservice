@@ -39,37 +39,37 @@ spec:
     spec:
       serviceAccountName: go-app-sa
       containers:
-      - name: envoy-sidecar
-        image: envoyproxy/envoy:v1.33.0
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - ALL
-          runAsNonRoot: true
-          readOnlyRootFilesystem: true
-          runAsUser: 10001
-          runAsGroup: 10001
-          seccompProfile:
-            type: RuntimeDefault
-        ports:
-        - containerPort: 5055
-          name: proxy
-        - containerPort: 9901
-          name: proxy-metric
-        args:
-        - "--config-path"
-        - "/etc/envoy/envoy.yaml"
-        resources:
-          limits:
-            cpu: 100m
-            memory: 128Mi
-          requests:
-            cpu: 50m
-            memory: 128Mi
-        volumeMounts:
-        - name: envoy-config-volume
-          mountPath: /etc/envoy
+      # - name: envoy-sidecar
+      #   image: envoyproxy/envoy:v1.33.0
+      #   securityContext:
+      #     allowPrivilegeEscalation: false
+      #     capabilities:
+      #       drop:
+      #         - ALL
+      #     runAsNonRoot: true
+      #     readOnlyRootFilesystem: true
+      #     runAsUser: 10001
+      #     runAsGroup: 10001
+      #     seccompProfile:
+      #       type: RuntimeDefault
+      #   ports:
+      #   - containerPort: 5055
+      #     name: proxy
+      #   - containerPort: 9901
+      #     name: proxy-metric
+      #   args:
+      #   - "--config-path"
+      #   - "/etc/envoy/envoy.yaml"
+      #   resources:
+      #     limits:
+      #       cpu: 100m
+      #       memory: 128Mi
+      #     requests:
+      #       cpu: 50m
+      #       memory: 128Mi
+      #   volumeMounts:
+      #   - name: envoy-config-volume
+      #     mountPath: /etc/envoy
       - name: go-app
         image: go-test:4.0
         imagePullPolicy: Never
@@ -116,7 +116,7 @@ spec:
           requests:
             cpu: 500m
             memory: 128Mi
-      volumes:
-      - name: envoy-config-volume
-        configMap:
-          name: envoy-config
+      # volumes:
+      # - name: envoy-config-volume
+      #   configMap:
+      #     name: envoy-config

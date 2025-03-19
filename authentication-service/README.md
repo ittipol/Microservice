@@ -1,4 +1,4 @@
-# Go Application
+# Authentication Service
 
 ### Run Go application on local
 ``` bash
