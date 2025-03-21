@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: envoy-config
-  namespace: go-app
+  namespace: auth-service
 data:
   envoy.yaml: |
     static_resources:

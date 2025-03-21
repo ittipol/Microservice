@@ -1,10 +1,10 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: go-app
-  namespace: go-app
+  name: auth-service-v2
+  namespace: auth-service
   labels:
-    app.kubernetes.io/name: go-app
+    app.kubernetes.io/name: auth-service-v2
 spec:
   replicas: 1 #number of replicas generated  
   strategy:
@@ -15,7 +15,8 @@ spec:
   selector:
     # Assigns labels to the pods for future selection
     matchLabels:
-      app.kubernetes.io/name: go-app
+      app.kubernetes.io/app: auth-service
+      version: v2
   template:
     metadata:
       annotations:
@@ -35,45 +36,20 @@ spec:
           {{- end }}
         vault.hashicorp.com/role: "multiple-role"
       labels:
-        app.kubernetes.io/name: go-app    
+        app.kubernetes.io/app: auth-service
+        version: v2
+        istio: monitor
     spec:
-      serviceAccountName: go-app-sa
+      serviceAccountName: auth-service-sa
       containers:
-      # - name: envoy-sidecar
-      #   image: envoyproxy/envoy:v1.33.0
-      #   securityContext:
-      #     allowPrivilegeEscalation: false
-      #     capabilities:
-      #       drop:
-      #         - ALL
-      #     runAsNonRoot: true
-      #     readOnlyRootFilesystem: true
-      #     runAsUser: 10001
-      #     runAsGroup: 10001
-      #     seccompProfile:
-      #       type: RuntimeDefault
-      #   ports:
-      #   - containerPort: 5055
-      #     name: proxy
-      #   - containerPort: 9901
-      #     name: proxy-metric
-      #   args:
-      #   - "--config-path"
-      #   - "/etc/envoy/envoy.yaml"
-      #   resources:
-      #     limits:
-      #       cpu: 100m
-      #       memory: 128Mi
-      #     requests:
-      #       cpu: 50m
-      #       memory: 128Mi
-      #   volumeMounts:
-      #   - name: envoy-config-volume
-      #     mountPath: /etc/envoy
-      - name: go-app
-        image: go-test:4.0
+      - name: auth-service
+        image: auth-service:1.0
         imagePullPolicy: Never
         env:
+        - name: SERVICE
+          value: first-app
+        - name: VERSION
+          value: v2
         - name: APP_ENV
           value: "production"
         - name: APP_PORT
@@ -81,17 +57,17 @@ spec:
         - name: APP_DSN_PATH
           valueFrom:
             configMapKeyRef:
-              name: go-app-config
+              name: auth-service-config
               key: app_dsn_path
         - name: APP_SECRET_PATH
           valueFrom:
             configMapKeyRef:
-              name: go-app-config
+              name: auth-service-config
               key: app_secret_path
         - name: APP_OTEL_COL_ENDPOINT
           valueFrom:
             configMapKeyRef:
-              name: go-app-config
+              name: auth-service-config
               key: app_otel_col_endpoint
         securityContext:
           allowPrivilegeEscalation: false
@@ -116,7 +92,3 @@ spec:
           requests:
             cpu: 500m
             memory: 128Mi
-      # volumes:
-      # - name: envoy-config-volume
-      #   configMap:
-      #     name: envoy-config

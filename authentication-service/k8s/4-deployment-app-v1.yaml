@@ -1,0 +1,129 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service-v1
+  namespace: auth-service
+  labels:
+    app.kubernetes.io/name: auth-service-v1
+spec:
+  replicas: 1 #number of replicas generated  
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1 # The maxSurge property controls the maximum number of additional pods that can be created during a rolling update
+      maxUnavailable: 1 # The maxUnavailable property determines the maximum number or percentage of pods that can be unavailable during a rolling update
+  selector:
+    # Assigns labels to the pods for future selection
+    matchLabels:
+      app.kubernetes.io/app: auth-service
+      version: v1
+  template:
+    metadata:
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/tls-skip-verify: "true"
+        vault.hashicorp.com/agent-inject-secret-sql-create-user-role: "database/creds/sql-create-user-role"
+        vault.hashicorp.com/agent-inject-template-sql-create-user-role: |
+          {
+          {{- with secret "database/creds/sql-create-user-role" -}}
+            "db_connection": "host=postgresql.postgresql.svc port=5432 user={{ .Data.username }} password={{ .Data.password }} dbname=postgresdb sslmode=disable TimeZone=Asia/Bangkok"
+          {{- end }}
+          }
+        vault.hashicorp.com/agent-inject-secret-jwt-secret-key : "key/jwt-secret-key"
+        vault.hashicorp.com/agent-inject-template-jwt-secret-key: |
+          {{- with secret "key/jwt-secret-key" -}}
+            {{ .Data | toJSON }}
+          {{- end }}
+        vault.hashicorp.com/role: "multiple-role"
+      labels:
+        app.kubernetes.io/app: auth-service
+        version: v1
+        istio: monitor
+    spec:
+      serviceAccountName: auth-service-sa
+      containers:
+      # - name: envoy-sidecar
+      #   image: envoyproxy/envoy:v1.33.0
+      #   securityContext:
+      #     allowPrivilegeEscalation: false
+      #     capabilities:
+      #       drop:
+      #         - ALL
+      #     runAsNonRoot: true
+      #     readOnlyRootFilesystem: true
+      #     runAsUser: 10001
+      #     runAsGroup: 10001
+      #     seccompProfile:
+      #       type: RuntimeDefault
+      #   ports:
+      #   - containerPort: 5055
+      #     name: proxy
+      #   - containerPort: 9901
+      #     name: proxy-metric
+      #   args:
+      #   - "--config-path"
+      #   - "/etc/envoy/envoy.yaml"
+      #   resources:
+      #     limits:
+      #       cpu: 100m
+      #       memory: 128Mi
+      #     requests:
+      #       cpu: 50m
+      #       memory: 128Mi
+      #   volumeMounts:
+      #   - name: envoy-config-volume
+      #     mountPath: /etc/envoy
+      - name: auth-service
+        image: auth-service:1.0
+        imagePullPolicy: Never
+        env:
+        - name: SERVICE
+          value: first-app
+        - name: VERSION
+          value: v1
+        - name: APP_ENV
+          value: "production"
+        - name: APP_PORT
+          value: "3000"
+        - name: APP_DSN_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: auth-service-config
+              key: app_dsn_path
+        - name: APP_SECRET_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: auth-service-config
+              key: app_secret_path
+        - name: APP_OTEL_COL_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: auth-service-config
+              key: app_otel_col_endpoint
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          runAsNonRoot: true
+          readOnlyRootFilesystem: true
+          runAsUser: 10001
+          runAsGroup: 10001
+          seccompProfile:
+            type: RuntimeDefault
+        ports:
+        - containerPort: 3000
+          name: http
+        # - containerPort: 9000
+        #   name: metrics
+        resources:
+          limits:
+            cpu: 500m
+            memory: 256Mi
+          requests:
+            cpu: 500m
+            memory: 128Mi
+      # volumes:
+      # - name: envoy-config-volume
+      #   configMap:
+      #     name: envoy-config
