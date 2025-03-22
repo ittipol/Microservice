@@ -2,18 +2,18 @@
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
 metadata:
-  name: first-app
+  name: test-service-route
   namespace: staging
 spec:
   hosts:
-    - first-app
+    - test-service-server.staging.svc.cluster.local
   http:
     - route:
         - destination:
-            host: first-app
+            host: test-service-server.staging.svc.cluster.local
             subset: v1
           weight: 0
         - destination:
-            host: first-app
+            host: test-service-server.staging.svc.cluster.local
             subset: v2
           weight: 100

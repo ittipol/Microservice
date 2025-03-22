@@ -21,8 +21,8 @@ spec:
   #   targetPort: proxy-metric
   - name: http
     port: 3000
-    # protocol: TCP
-    # targetPort: http
+    protocol: TCP
+    targetPort: http
   # - name: metrics
   #   port: 9000
   #   protocol: TCP

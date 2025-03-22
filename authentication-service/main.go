@@ -53,11 +53,13 @@ func main() {
 
 	initTimeZone()
 
+	version := os.Getenv("VERSION")
 	appPort := os.Getenv("APP_PORT")
 	appDsnPath := os.Getenv("APP_DSN_PATH")
 	appSecretPath := os.Getenv("APP_SECRET_PATH")
 	otlpEndpoint := os.Getenv("APP_OTEL_COL_ENDPOINT")
 
+	fmt.Println("APP_VERSION:", version)
 	fmt.Println("APP_PORT:", appPort)
 	fmt.Println("APP_DSN_PATH:", appDsnPath)
 	fmt.Println("APP_SECRET_PATH:", appSecretPath)
@@ -280,6 +282,10 @@ func main() {
 
 	e.GET("/health", func(c echo.Context) error {
 		return c.String(http.StatusOK, "Hello, World!!!!!!")
+	})
+
+	e.GET("/version", func(c echo.Context) error {
+		return c.String(http.StatusOK, fmt.Sprintf("Service version: %v", version))
 	})
 
 	e.GET("/test", func(c echo.Context) error {

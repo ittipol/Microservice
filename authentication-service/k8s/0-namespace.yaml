@@ -3,5 +3,5 @@ kind: Namespace
 metadata:
   name: auth-service
   labels:
-    # monitoring: prometheus
+    monitoring: prometheus
     istio-injection: enabled

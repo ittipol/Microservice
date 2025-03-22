@@ -1,16 +1,16 @@
 apiVersion: networking.istio.io/v1beta1
 kind: DestinationRule
 metadata:
-  name: first-app
+  name: auth-service-destination-rule
   namespace: auth-service
 spec:
-  host: first-app
+  host: auth-service-server.auth-service.svc.cluster.local
   subsets:
     - name: v1
       labels:
-        app.kubernetes.io/app: go-app
+        app.kubernetes.io/app: auth-service
         version: v1
     - name: v2
       labels:
-        app.kubernetes.io/app: go-app
+        app.kubernetes.io/app: auth-service
         version: v2

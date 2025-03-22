@@ -1,18 +1,24 @@
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
 metadata:
-  name: first-app
+  name: auth-service-route
   namespace: auth-service
 spec:
   hosts:
-    - first-app
+    - auth-service-server.auth-service.svc.cluster.local
+  # gateways:
+  #   - api # The name of gateway (9-gateway.yaml)
   http:
-    - route:
-        - destination:
-            host: first-app
-            subset: v1
-          weight: 0
-        - destination:
-            host: first-app
-            subset: v2
-          weight: 100
+  - name: "auth-service-route"
+    # match:
+    # - uri:
+    #   prefix: /
+    route:
+    - destination:
+        host: auth-service-server.auth-service.svc.cluster.local
+        subset: v1
+      weight: 90
+    - destination:
+        host: auth-service-server.auth-service.svc.cluster.local
+        subset: v2
+      weight: 10

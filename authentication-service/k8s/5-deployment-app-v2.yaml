@@ -20,6 +20,9 @@ spec:
   template:
     metadata:
       annotations:
+        # https://istio.io/latest/docs/reference/config/annotations/
+        # port 8200 is vault port
+        traffic.sidecar.istio.io/excludeOutboundPorts: "8200"
         vault.hashicorp.com/agent-inject: "true"
         vault.hashicorp.com/tls-skip-verify: "true"
         vault.hashicorp.com/agent-inject-secret-sql-create-user-role: "database/creds/sql-create-user-role"
@@ -47,7 +50,7 @@ spec:
         imagePullPolicy: Never
         env:
         - name: SERVICE
-          value: first-app
+          value: auth-service
         - name: VERSION
           value: v2
         - name: APP_ENV

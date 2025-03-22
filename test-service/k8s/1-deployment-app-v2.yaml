@@ -2,28 +2,29 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: first-app-v2
+  name: test-service-v2
   namespace: staging
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: first-app
+      app: test-service
       version: v2
   template:
     metadata:
       labels:
-        app: first-app
+        app: test-service
         version: v2
         istio: monitor
     spec:
+      serviceAccountName: test-service-sa
       containers:
         - image: test-service:1.0
           imagePullPolicy: Never
-          name: first-app
+          name: test-service
           env:
             - name: SERVICE
-              value: first-app
+              value: test-service
             - name: VERSION
               value: v2
           ports:
