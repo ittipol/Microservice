@@ -3,10 +3,10 @@ apiVersion: v1
 kind: Service
 metadata:
   name: test-service-server
-  namespace: staging
+  namespace: test-service
 spec:
   ports:
     - name: http
-      port: 3000
+      port: 5055
   selector:
     app: test-service

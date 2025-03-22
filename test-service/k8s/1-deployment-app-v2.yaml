@@ -3,7 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: test-service-v2
-  namespace: staging
+  namespace: test-service
 spec:
   replicas: 1
   selector:
@@ -29,4 +29,4 @@ spec:
               value: v2
           ports:
             - name: http
-              containerPort: 3000
+              containerPort: 5055

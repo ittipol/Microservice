@@ -1,19 +1,25 @@
----
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
 metadata:
   name: test-service-route
-  namespace: staging
+  namespace: test-service
 spec:
   hosts:
-    - test-service-server.staging.svc.cluster.local
+  - test-service-server.test-service.svc.cluster.local # DNS for internal access
+  - app.service.api # DNS for external access
+  gateways:
+    - test-service/api # The name of gateway (9-gateway.yaml)
   http:
-    - route:
-        - destination:
-            host: test-service-server.staging.svc.cluster.local
-            subset: v1
-          weight: 0
-        - destination:
-            host: test-service-server.staging.svc.cluster.local
-            subset: v2
-          weight: 100
+  - name: "test-service-route"
+    # match:
+    # - uri:
+    #   prefix: /
+    route:
+    - destination:
+        host: test-service-server.test-service.svc.cluster.local
+        subset: v1
+      weight: 90
+    - destination:
+        host: test-service-server.test-service.svc.cluster.local
+        subset: v2
+      weight: 10
