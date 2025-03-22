@@ -1,1 +1,3 @@
 kubectl port-forward svc/go-app-server -n go-app 5055:5055
+
+minikube image build -t auth-service:1.0 .

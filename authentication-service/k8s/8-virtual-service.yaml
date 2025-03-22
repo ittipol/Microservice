@@ -1,4 +1,4 @@
-apiVersion: networking.istio.io/v1beta1
+apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
   name: auth-service-route
@@ -11,9 +11,9 @@ spec:
     - auth-service/api # The name of gateway (9-gateway.yaml)
   http:
   - name: "auth-service-route"
-    # match:
-    # - uri:
-    #   prefix: /
+    match:
+    - uri:
+        prefix: /auth
     route:
     - destination:
         host: auth-service-server.auth-service.svc.cluster.local

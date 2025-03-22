@@ -23,22 +23,36 @@ go test .../. -v
 **Bind a role to a Kubernetes service account**
 ``` bash
 vault write auth/kubernetes/role/sql-create-user-role \
-   bound_service_account_names=auth-service-sa \
-   bound_service_account_namespaces=auth-service \
-   policies=database-only-read-policy \
-   ttl=1h
+  bound_service_account_names=auth-service-sa \
+  bound_service_account_namespaces=auth-service \
+  policies=database-only-read-policy \
+  ttl=1h
 
 vault write auth/kubernetes/role/multiple-role \
-   bound_service_account_names=auth-service-sa \
-   bound_service_account_namespaces=auth-service \
-   policies=database-only-read-policy \
-   policies=jwt-secret-key-policy \
-   ttl=1h
+  bound_service_account_names=auth-service-sa \
+  bound_service_account_namespaces=auth-service \
+  policies=database-only-read-policy \
+  policies=jwt-secret-key-policy \
+  ttl=1h
 ```
 
 **Check endpoint**
 ``` bash
 kubectl get endpoints -n auth-service
+```
+
+**Check pod proxy metric port**
+``` bash
+kubectl get pod {pod_name} -n auth-service -o yaml
+
+# Search text "http-envoy-prom"
+```
+
+``` yaml
+# PodMonitor
+podMetricsEndpoints:
+  - port: http-envoy-prom
+    path: stats/prometheus
 ```
 
 **Test in Kubernetes cluster with curl command**
