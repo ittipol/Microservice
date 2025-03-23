@@ -1,0 +1,20 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: istio-proxy-podmonitor
+  namespace: proxy-monitoring
+  labels:
+    prometheus: main
+spec:
+  namespaceSelector:
+    matchNames:
+      - auth-service
+  selector:
+    matchLabels:
+      istio: monitor
+  podMetricsEndpoints:
+    - port: http-envoy-prom
+      path: stats/prometheus
+      interval: 15s
+      scrapeTimeout: 15s

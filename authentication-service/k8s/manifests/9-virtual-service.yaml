@@ -13,7 +13,7 @@ spec:
   - name: "auth-service-route"
     match:
     - uri:
-        prefix: /auth
+        prefix: /
     route:
     - destination:
         host: auth-service-server.auth-service.svc.cluster.local

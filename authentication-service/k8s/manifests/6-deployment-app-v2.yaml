@@ -44,6 +44,7 @@ spec:
         istio: monitor
     spec:
       serviceAccountName: auth-service-sa
+      # priorityClassName: high
       containers:
       - name: auth-service
         image: auth-service:1.0

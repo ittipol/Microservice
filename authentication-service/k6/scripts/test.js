@@ -11,7 +11,8 @@ export let options = {
 }
 
 export default function() {
-    const response = http.get("http://host.docker.internal:5055")
+    // const response = http.get("http://host.docker.internal:5055")
+    const response = http.get("http://host.docker.internal/version")
     check(response, {
         "status is 200": (r) => r.status == 200,
         "transaction time OK (200 ms)": (r) => r.timings.duration < 200

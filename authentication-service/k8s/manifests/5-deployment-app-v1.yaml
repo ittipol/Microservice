@@ -44,6 +44,7 @@ spec:
         istio: monitor
     spec:
       serviceAccountName: auth-service-sa
+      # priorityClassName: high
       containers:
       # - name: envoy-sidecar
       #   image: envoyproxy/envoy:v1.33.0
