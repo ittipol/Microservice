@@ -98,7 +98,7 @@ func main() {
 
 	db := initDbConnection(result["db_connection"].(string))
 
-	// db.Migrator().AutoMigrate(repositories.User{})
+	db.Migrator().AutoMigrate(repositories.User{})
 
 	// ========================================================================
 

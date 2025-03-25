@@ -12,6 +12,8 @@ spec:
     rollingUpdate:
       maxSurge: 1 # The maxSurge property controls the maximum number of additional pods that can be created during a rolling update
       maxUnavailable: 1 # The maxUnavailable property determines the maximum number or percentage of pods that can be unavailable during a rolling update
+      # maxSurge: 25%
+      # maxUnavailable: 25%
   selector:
     # Assigns labels to the pods for future selection
     matchLabels:
@@ -23,6 +25,10 @@ spec:
         # https://istio.io/latest/docs/reference/config/annotations/
         # port 8200 is vault port
         traffic.sidecar.istio.io/excludeOutboundPorts: "8200"
+        sidecar.istio.io/proxyCPU: "500m"
+        sidecar.istio.io/proxyCPULimit: "500m"
+        sidecar.istio.io/proxyMemory: "256Mi"
+        sidecar.istio.io/proxyMemoryLimit: "256Mi"
         vault.hashicorp.com/agent-inject: "true"
         vault.hashicorp.com/tls-skip-verify: "true"
         vault.hashicorp.com/agent-inject-secret-sql-create-user-role: "database/creds/sql-create-user-role"
