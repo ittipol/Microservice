@@ -128,10 +128,10 @@ spec:
         #   name: metrics
         resources:
           limits:
-            cpu: 300m
+            cpu: 600m
             memory: 256Mi
           requests:
-            cpu: 40m
+            cpu: 100m
             memory: 128Mi
       # volumes:
       # - name: envoy-config-volume

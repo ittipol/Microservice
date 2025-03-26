@@ -9,11 +9,31 @@ spec:
     kind: Deployment
     name: auth-service-v1
   minReplicas: 1
-  maxReplicas: 5
+  maxReplicas: 3
   metrics:
   - type: Resource
     resource:
       name: cpu
       target:
         type: Utilization
-        averageUtilization: 50
+        averageUtilization: 60
+  behavior:    
+    scaleDown:
+      stabilizationWindowSeconds: 300 # waiting 300s before scale down
+      policies:
+      # - type: Percent
+      #   value: 10
+      #   periodSeconds: 15
+      - type: Pods
+        value: 1
+        periodSeconds: 60 # scale down one pod every 1 min
+      selectPolicy: Min
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+      # - type: Percent
+      #   value: 100
+      #   periodSeconds: 15
+      - type: Pods
+        value: 2
+        periodSeconds: 60 # scale up no more than 2 pods per minute
