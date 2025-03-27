@@ -5,6 +5,30 @@ metadata:
   namespace: auth-service
 spec:
   host: auth-service-server.auth-service.svc.cluster.local
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 1
+      http:
+        http1MaxPendingRequests: 1
+        maxRequestsPerConnection: 1
+    outlierDetection:
+      consecutive5xxErrors: 1
+      # consecutiveGatewayErrors: 1
+      interval: 1s
+      baseEjectionTime: 3m
+      maxEjectionPercent: 100
+  # trafficPolicy:  
+  #   connectionPool:  
+  #     tcp:  
+  #       maxConnections: 2  
+  #     http:  
+  #       http1MaxPendingRequests: 1  
+  #       maxRequestsPerConnection: 1  
+  #   outlierDetection:  
+  #     consecutive5xxErrors: 2  
+  #     interval: 10s # If the auth service encounters 2 consecutive 5xx errors within 10 seconds, it will be ejected for 30 seconds
+  #     baseEjectionTime: 30s # After 30 seconds, the circuit enters a half-open state to test recovery
   subsets:
     - name: v1
       labels:

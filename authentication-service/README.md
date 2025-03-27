@@ -58,6 +58,8 @@ podMetricsEndpoints:
 **Test in Kubernetes cluster with curl command**
 ``` bash
 while true; do curl http://auth-service-server.auth-service.svc.cluster.local:3000/version && echo "" && sleep 1; done
+
+while true; do curl http://auth-service-server.auth-service.svc.cluster.local:3000/error/500 && echo "" && sleep 1; done
 ```
 
 **External access test**
@@ -67,4 +69,6 @@ while true; do curl http://app.service.api/version && echo "" && sleep 0.5; done
 while true; do curl http://app.service.api/version && echo "" && sleep 1; done
 
 while true; do curl http://app.service.api/user/profile && echo "" && sleep 1; done
+
+while true; do curl http://app.service.api/error/500 && echo "" && sleep 1; done
 ```

@@ -126,12 +126,12 @@ spec:
           name: http
         # - containerPort: 9000
         #   name: metrics
-        resources:
-          limits:
-            cpu: 600m
-            memory: 256Mi
+        resources:          
           requests:
-            cpu: 100m
+            cpu: 200m
+            memory: 64Mi
+          limits:
+            cpu: 500m
             memory: 128Mi
       # volumes:
       # - name: envoy-config-volume

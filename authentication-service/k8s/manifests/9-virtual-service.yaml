@@ -14,6 +14,7 @@ spec:
     match:
     - uri:
         prefix: /
+    timeout: 5s # 5 second timeout for requests to the auth service. If the service does not respond within this time, the request will fail gracefully
     route:
     - destination:
         host: auth-service-server.auth-service.svc.cluster.local

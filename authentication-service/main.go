@@ -279,6 +279,7 @@ func main() {
 	e.GET("/error", loggerHandler.Error)
 	e.GET("/trace", loggerHandler.Trace)
 	e.GET("/time/:time", loggerHandler.Time)
+	e.GET("/error/:status", loggerHandler.ErrorStatus)
 
 	e.GET("/health", func(c echo.Context) error {
 		return c.String(http.StatusOK, "Hello, World!!!!!!")

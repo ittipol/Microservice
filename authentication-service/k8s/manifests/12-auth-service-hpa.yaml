@@ -16,7 +16,7 @@ spec:
       name: cpu
       target:
         type: Utilization
-        averageUtilization: 60
+        averageUtilization: 50
   behavior:    
     scaleDown:
       stabilizationWindowSeconds: 300 # waiting 300s before scale down

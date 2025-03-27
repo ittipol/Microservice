@@ -9,4 +9,5 @@ type LoggerHandler interface {
 	Error(c echo.Context) error
 	Trace(c echo.Context) error
 	Time(c echo.Context) error
+	ErrorStatus(c echo.Context) error
 }

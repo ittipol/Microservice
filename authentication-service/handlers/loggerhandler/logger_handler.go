@@ -101,3 +101,35 @@ func (h loggerHandler) Time(c echo.Context) error {
 
 	return c.String(http.StatusOK, fmt.Sprintf("HTTP GET /time, OK : time %v ms", timeValue))
 }
+
+func (h loggerHandler) ErrorStatus(c echo.Context) error {
+
+	mainSpan := factory.NewTracerFactory(h.tracer, c.Request().Context(), "HTTP GET /ErrorStatus")
+	defer mainSpan.SpanEnd()
+
+	status := c.Param("status")
+
+	code, err := strconv.Atoi(status)
+
+	if err != nil {
+		h.logger.Error(fmt.Sprintf("Cannot convert string to int, [%v]", status))
+
+		mainSpan.RecordError(err)
+		mainSpan.SetStatus(codes.Error, codes.Error.String())
+
+		return echo.NewHTTPError(http.StatusInternalServerError, "Unexpected error")
+	}
+
+	h.logger.Info(fmt.Sprintf("HTTP GET /ErrorStatus, OK : http status %v"), code)
+
+	switch code {
+	case http.StatusInternalServerError:
+		return echo.NewHTTPError(http.StatusInternalServerError, http.StatusText(code))
+	case http.StatusBadRequest:
+		return echo.NewHTTPError(http.StatusBadRequest, http.StatusText(code))
+		// default:
+		// 	return echo.NewHTTPError(http.StatusInternalServerError, "Unexpected error")
+	}
+
+	return echo.NewHTTPError(http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+}
