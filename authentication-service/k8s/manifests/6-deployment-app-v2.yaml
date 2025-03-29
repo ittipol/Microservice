@@ -48,6 +48,7 @@ spec:
         app.kubernetes.io/app: auth-service
         version: v2
         istio: monitor
+        service.istio.io/canonical-name: auth-service-v2
     spec:
       serviceAccountName: auth-service-sa
       # priorityClassName: high

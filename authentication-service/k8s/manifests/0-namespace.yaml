@@ -3,5 +3,5 @@ kind: Namespace
 metadata:
   name: auth-service
   labels:
-    monitoring: prometheus
-    istio-injection: enabled
+    # monitoring: prometheus
+    istio-injection: enabled # Add a namespace label to instruct Istio to automatically inject Envoy sidecar proxies when you deploy your application

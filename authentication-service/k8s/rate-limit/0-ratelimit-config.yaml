@@ -1,0 +1,19 @@
+# path /login rate limit at 100 request per second rate limit
+# and all other requests at 100 req/sec.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ratelimit-config
+data:
+  config.yaml: |
+    domain: rate-limit-test
+    descriptors:
+      - key: PATH
+        value: "/login"
+        rate_limit:
+          unit: minute
+          requests_per_unit: 5
+      - key: PATH
+        rate_limit:
+          unit: second
+          requests_per_unit: 100

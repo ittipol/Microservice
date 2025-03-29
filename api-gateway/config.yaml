@@ -1,0 +1,13 @@
+services:
+  auth-service:
+    url: "auth-service-server.auth-service.svc.cluster.local"
+    port: 3000
+
+routes:
+  - upstream:
+      path: "auth/error/:status"
+    downstream:
+      host: "auth-service"
+      path: "/error/:status"
+  - upstream:
+      path: ""
