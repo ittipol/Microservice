@@ -1,13 +1,23 @@
 services:
-  auth-service:
-    url: "auth-service-server.auth-service.svc.cluster.local"
-    port: 3000
+  - name: "auth-service"
+    enable: true
+    routePrefix: "/auth"
+    url: "http://auth-service-server.auth-service.svc.cluster.local:3000"
+    # url: "http://app.service.api"
+    auth:
+      except:
+        - /login
+  - name: "payment-service"
+    enable: true
+    routePrefix: "/payment"
+    url: "http://auth-service-server.auth-service.svc.cluster.local:3000"
+    # url: "http://app.service.api"
 
-routes:
-  - upstream:
-      path: "auth/error/:status"
-    downstream:
-      host: "auth-service"
-      path: "/error/:status"
-  - upstream:
-      path: ""
+# routes:
+#   - upstream:
+#       path: "auth/error/:status"
+#     downstream:
+#       host: "auth-service"
+#       path: "/error/:status"
+#   - upstream:
+#       path: ""

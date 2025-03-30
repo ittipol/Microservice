@@ -1,0 +1,10 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: proxy-server-config
+  namespace: proxy-server
+data:
+  app_port: "3000"
+  app_dsn_path: /vault/secrets/sql-create-user-role
+  app_secret_path: /vault/secrets/jwt-secret-key
+  app_otel_col_endpoint: opentelemetry-collector.otelcol.svc:4317

@@ -1,0 +1,1 @@
+minikube image build -t proxy-server:1.0 .

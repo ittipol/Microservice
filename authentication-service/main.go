@@ -282,7 +282,7 @@ func main() {
 	e.GET("/error/:status", loggerHandler.ErrorStatus)
 
 	e.GET("/health", func(c echo.Context) error {
-		return c.String(http.StatusOK, "Hello, World!!!!!!")
+		return c.String(http.StatusOK, "OK")
 	})
 
 	e.GET("/version", func(c echo.Context) error {

@@ -6,9 +6,9 @@ metadata:
 spec:
   hosts:
   - auth-service-server.auth-service.svc.cluster.local # DNS for internal access
-  - app.service.api # DNS for external access
-  gateways:
-    - auth-service/api # The name of gateway (9-gateway.yaml)
+  # - app.service.api # DNS for external access
+  # gateways:
+  #   - auth-service/api # The name of gateway (9-gateway.yaml)
   http:
   - name: "auth-service-route"
     match:

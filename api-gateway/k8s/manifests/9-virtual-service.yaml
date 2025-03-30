@@ -1,0 +1,22 @@
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: proxy-server-route
+  namespace: proxy-server
+spec:
+  hosts:
+  # - proxy-server.proxy-server.svc.cluster.local # DNS for internal access
+  - app.service.api # DNS for external access
+  gateways:
+    - proxy-server/api-gateway # The name of gateway
+  http:
+  - name: "proxy-server-route"
+    match:
+    - uri:
+        prefix: /
+    timeout: 5s # 5 second timeout for requesting
+    route:
+    - destination:
+        host: proxy-server.proxy-server.svc.cluster.local
+        port:
+          number: 3000
