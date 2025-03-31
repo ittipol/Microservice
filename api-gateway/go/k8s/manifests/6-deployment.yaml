@@ -38,7 +38,7 @@ spec:
         # vault.hashicorp.com/role: "multiple-role"
       labels:
         app.kubernetes.io/app: proxy-server
-        # istio: monitor
+        istio: monitor
         service.istio.io/canonical-name: proxy-server
     spec:
       serviceAccountName: proxy-server-sa
@@ -79,8 +79,8 @@ spec:
           name: http
         resources:          
           requests:
-            cpu: 50m
+            cpu: 100m
             memory: 64Mi
           limits:
-            cpu: 200m
+            cpu: 400m
             memory: 128Mi

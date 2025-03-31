@@ -1,0 +1,1 @@
+minikube image build -t api-gateway:1.0 .

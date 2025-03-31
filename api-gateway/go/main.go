@@ -14,19 +14,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-type services struct {
-	Name        string
-	Enable      bool
-	RoutePrefix string
-	URL         string
-}
-
-type configuration struct {
-	Services []services
-}
-
-var Config *configuration
-
 func init() {
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")

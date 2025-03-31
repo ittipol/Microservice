@@ -1,0 +1,6 @@
+services:
+  dotnet:
+    build: .
+    container_name: dotnet_8_test
+    ports:
+      - 3000:3000
