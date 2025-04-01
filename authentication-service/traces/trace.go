@@ -51,7 +51,7 @@ func NewTraceProvider(exp sdktrace.SpanExporter) *sdktrace.TracerProvider {
 		resource.Default(),
 		resource.NewWithAttributes(
 			semconv.SchemaURL,
-			semconv.ServiceName("go-app-traces"),
+			semconv.ServiceName("authentication-service-traces"),
 		),
 	)
 

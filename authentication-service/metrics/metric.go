@@ -37,7 +37,7 @@ func NewMetricProvider(exp sdkmetric.Exporter) *sdkmetric.MeterProvider {
 		resource.NewWithAttributes(
 			semconv.SchemaURL,
 			// The service name used to display traces in backends
-			semconv.ServiceName("go-app-metrics"), // job name
+			semconv.ServiceName("authentication-service-metrics"), // job name
 		),
 	)
 

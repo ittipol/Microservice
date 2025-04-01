@@ -85,7 +85,7 @@ spec:
       #   - name: envoy-config-volume
       #     mountPath: /etc/envoy
       - name: auth-service
-        image: auth-service:1.0
+        image: authentication-service:1.0
         imagePullPolicy: Never
         env:
         - name: SERVICE

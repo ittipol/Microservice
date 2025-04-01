@@ -36,7 +36,7 @@ func NewLogProvider(exp sdklog.Exporter) *sdklog.LoggerProvider {
 		resource.NewWithAttributes(
 			semconv.SchemaURL,
 			// The service name used to display traces in backends
-			semconv.ServiceName("go-app-event-logs"),
+			semconv.ServiceName("authentication-service-event-logs"),
 		),
 	)
 

@@ -47,9 +47,9 @@ func (h loggerHandler) Warn(c echo.Context) error {
 	mainSpan := factory.NewTracerFactory(h.tracer, c.Request().Context(), "HTTP GET /warn")
 	defer mainSpan.SpanEnd()
 
-	h.logger.Warn("Warn message")
+	h.logger.Warn("Warning message")
 
-	return c.String(http.StatusOK, "Warn")
+	return c.String(http.StatusOK, "Warning")
 }
 
 func (h loggerHandler) Error(c echo.Context) error {

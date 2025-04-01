@@ -4,7 +4,7 @@ WORKDIR /app
 # Copy everything
 COPY . ./
 
-WORKDIR /app/TestProxy
+WORKDIR /app/ApiGateway
 
 # Restore as distinct layers
 RUN dotnet restore
@@ -15,7 +15,7 @@ RUN dotnet publish -c Release -o published
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 
 WORKDIR /app
-COPY --from=build-env /app/TestProxy/published .
+COPY --from=build-env /app/ApiGateway/published .
 
 ENV ASPNETCORE_HTTP_PORTS=3000
 ENV ASPNETCORE_ENVIRONMENT=Production
@@ -25,4 +25,4 @@ EXPOSE 3000
 
 USER 1000
 
-ENTRYPOINT ["dotnet", "TestProxy.dll"]
+ENTRYPOINT ["dotnet", "ApiGateway.dll"]

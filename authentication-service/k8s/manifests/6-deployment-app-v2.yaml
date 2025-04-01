@@ -54,7 +54,7 @@ spec:
       # priorityClassName: high
       containers:
       - name: auth-service
-        image: auth-service:1.0
+        image: authentication-service:1.0
         imagePullPolicy: Never
         env:
         - name: SERVICE

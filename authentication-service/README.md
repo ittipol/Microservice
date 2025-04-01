@@ -64,11 +64,15 @@ while true; do curl http://auth-service-server.auth-service.svc.cluster.local:30
 
 **External access test**
 ``` bash
-while true; do curl http://app.service.api/version && echo "" && sleep 0.5; done
+while true; do curl http://app.service.api/auth/version && echo "" && sleep 0.5; done
 
-while true; do curl http://app.service.api/version && echo "" && sleep 1; done
+while true; do curl http://app.service.api/auth/version && echo "" && sleep 1; done
 
-while true; do curl http://app.service.api/user/profile && echo "" && sleep 1; done
+while true; do curl http://app.service.api/auth/error && echo "" && sleep 1; done
 
-while true; do curl http://app.service.api/error/500 && echo "" && sleep 1; done
+while true; do curl http://app.service.api/auth/warn && echo "" && sleep 1; done
+
+while true; do curl http://app.service.api/auth/info && echo "" && sleep 1; done
+
+while true; do curl http://app.service.api/auth/error/500 && echo "" && sleep 1; done
 ```

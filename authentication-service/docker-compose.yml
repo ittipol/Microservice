@@ -1,7 +1,7 @@
 services:
-  go-application:
+  authentication-service:
     build: .
-    container_name: go-application
+    container_name: authentication-service
     restart: unless-stopped
     environment:
       VERSION: "v1"
@@ -16,7 +16,7 @@ services:
     depends_on:
       - postgres-database
     networks:
-      - go-app-network
+      - authentication-service-network
 
   postgres-database:
     image: postgres:15.2-alpine3.17
@@ -29,12 +29,12 @@ services:
       - postgresql:/var/lib/postgresql
       - postgresql_data:/var/lib/postgresql/data
     networks:
-      go-app-network:
+      authentication-service-network:
         aliases:
           - postgres
 
 networks:
-  go-app-network:
+  authentication-service-network:
     driver: bridge
 
 volumes:
