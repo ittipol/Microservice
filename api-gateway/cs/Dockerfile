@@ -19,7 +19,7 @@ COPY --from=build-env /app/ApiGateway/published .
 
 ENV ASPNETCORE_HTTP_PORTS=3000
 ENV ASPNETCORE_ENVIRONMENT=Production
-ENV ASPNETCORE_URLS=http://+:3000
+# ENV ASPNETCORE_URLS=http://+:3000
 
 EXPOSE 3000
 

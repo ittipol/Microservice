@@ -1,0 +1,6 @@
+services:
+  dotnet:
+    build: .
+    container_name: test-service
+    ports:
+      - 5055:5055

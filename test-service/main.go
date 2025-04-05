@@ -24,6 +24,19 @@ func main() {
 		return c.String(http.StatusOK, fmt.Sprintf("Service version: %v", version))
 	})
 
-	e.Logger.Fatal(e.Start(fmt.Sprintf(":%v", 3000)))
+	e.GET("/header", func(c echo.Context) error {
+
+		// header := c.Request().Header.Get("Authorization")
+
+		headers := c.Request().Header
+
+		for i, v := range headers {
+			fmt.Printf("%v --> %v\n", i, v)
+		}
+
+		return c.String(http.StatusOK, fmt.Sprintf("Headers: %v", headers))
+	})
+
+	e.Logger.Fatal(e.Start(fmt.Sprintf(":%v", 5055)))
 
 }

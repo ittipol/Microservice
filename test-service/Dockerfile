@@ -19,7 +19,7 @@ COPY --from=build /go-app/app ./
 
 # RUN chmod +x ./app
 
-EXPOSE 3000
+EXPOSE 5055
 
 USER 1000
 

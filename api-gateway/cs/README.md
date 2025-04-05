@@ -4,10 +4,21 @@
 dotnet run --project <path to .csproj file>
 
 ## YARP (Reverse Proxy)
+- https://learn.microsoft.com/en-us/aspnet/core/fundamentals/servers/yarp/config-files?view=aspnetcore-9.0
+- https://learn.microsoft.com/en-us/aspnet/core/fundamentals/servers/yarp/http-client-config?view=aspnetcore-9.0
+
 **LoadBalancingPolicy**
 ``` json
 // appsettings.json
 "LoadBalancingPolicy" : "PowerOfTwoChoices", // Alternatively "FirstAlphabetical", "Random", "RoundRobin", "LeastRequests"
+```
+
+**AuthorizationPolicy**
+- default: The route will require an authenticated user
+- anonymous: The route will not require authorization regardless of any other configuration
+``` json
+// appsettings.json
+"AuthorizationPolicy": "default", // default, anonymous, {custom authorization policy}
 ```
 
 ## Dependency Injection
