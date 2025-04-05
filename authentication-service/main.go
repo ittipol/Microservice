@@ -298,6 +298,17 @@ func main() {
 		return c.String(http.StatusInternalServerError, fmt.Sprintf("Sleeping %d milliseconds...\n", n))
 	})
 
+	e.GET("/header", func(c echo.Context) error {
+
+		headers := c.Request().Header
+
+		// for i, v := range headers {
+		// 	fmt.Printf("%v --> %v\n", i, v)
+		// }
+
+		return c.String(http.StatusOK, fmt.Sprintf("Headers: %v", headers))
+	})
+
 	e.Logger.Fatal(e.Start(fmt.Sprintf(":%v", appPort)))
 
 	// ========================================================================
