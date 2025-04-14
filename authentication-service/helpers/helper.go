@@ -29,3 +29,12 @@ func GetBearerToken(bearerToken string) (token string, err error) {
 
 	return parts[1], nil
 }
+
+func CheckRefreshTokenIsLatest(refreshToken string, latestRefreshToken string) error {
+
+	if refreshToken != latestRefreshToken {
+		return errors.New("Refresh token not valid")
+	}
+
+	return nil
+}

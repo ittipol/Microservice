@@ -8,6 +8,7 @@ services:
       APP_PORT: "3000"
       APP_DSN_PATH: "/secrets/sql-create-user-role"
       APP_SECRET_PATH: "/secrets/jwt-secret-key"
+      APP_REDIS_SECRET_PATH: "/secrets/redis-secret"
       APP_OTEL_COL_ENDPOINT: ""
     ports:
       - 3000:3000
@@ -15,12 +16,14 @@ services:
       - ./secrets:/secrets
     depends_on:
       - postgres-database
+      - redis
     networks:
       - authentication-service-network
 
   postgres-database:
     image: postgres:15.2-alpine3.17
     container_name: postgres-database
+    restart: unless-stopped
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin
@@ -32,6 +35,27 @@ services:
       authentication-service-network:
         aliases:
           - postgres
+  
+  redis:
+    image: redis:6.2
+    container_name: redis
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: password
+    command:
+    - /bin/sh
+    - -c
+    # - Double dollars, so that the variable is not expanded by Docker Compose
+    # - Surround by quotes, so that the shell does not split the password
+    # - The ${variable:?message} syntax causes shell to exit with a non-zero
+    #   code and print a message, when the variable is not set or empty
+    - redis-server --requirepass "$${REDIS_PASSWORD:?REDIS_PASSWORD variable is not set}"
+    ports:
+      - 6379:6379
+    volumes:
+      - redis_data:/data
+    networks:
+      - authentication-service-network
 
 networks:
   authentication-service-network:
@@ -41,4 +65,6 @@ volumes:
   postgresql:
     external: false
   postgresql_data:
+    external: false
+  redis_data:
     external: false

@@ -1,7 +1,9 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.RateLimiting;
+using ApiGateway;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
@@ -11,7 +13,9 @@ using Yarp.ReverseProxy.Transforms;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var secretKey = Convert.FromBase64String(builder.Configuration.GetSection("Jwt:Secret").Get<string>() ?? "");
+var key = Convert.FromBase64String(builder.Configuration.GetSection("AES:Secret").Get<string>() ?? "");
+var iv = Convert.FromBase64String(builder.Configuration.GetSection("AES:IV").Get<string>() ?? "");
+var jwtSecretKey = Convert.FromBase64String(builder.Configuration.GetSection("Jwt:Secret").Get<string>() ?? "");
 
 builder.Services.AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
@@ -27,8 +31,7 @@ builder.Services.AddReverseProxy()
                 // Add the token to the outgoing request headers
                 if (!string.IsNullOrEmpty(token))
                 {
-
-                    var id = ApiGateway.JwtUtil.GetId(token, secretKey);
+                    var id = JwtUtil.GetId(token, jwtSecretKey);
 
                     context.ProxyRequest.Headers.Add("id", id);
 
@@ -38,6 +41,28 @@ builder.Services.AddReverseProxy()
             }
 
             context.ProxyRequest.Headers.Remove("Authorization");
+
+            using var reader = new StreamReader(context.HttpContext.Request.Body);
+            
+            var body = await reader.ReadToEndAsync();
+            if (!string.IsNullOrEmpty(body))
+            {
+                // body = body.Replace("Data", "value");
+
+                Console.WriteLine($"AddRequestTransform: {body}");
+
+                var cipherBytes = Convert.FromBase64String(body);
+                byte[] decryptedBytes = Cryptography.Decrypt(cipherBytes, key, iv);
+                Console.WriteLine($"AddRequestTransform [Decrypt]: {Encoding.UTF8.GetString(decryptedBytes)}");
+                body = Encoding.UTF8.GetString(decryptedBytes);
+
+                var bytes = Encoding.UTF8.GetBytes(body);
+                // Change Content-Length to match the modified body, or remove it
+                context.HttpContext.Request.Body = new MemoryStream(bytes);
+                // Request headers are copied before transforms are invoked, update any
+                // needed headers on the ProxyRequest
+                context.ProxyRequest.Content!.Headers.ContentLength = bytes.Length;
+            }
         });
 
         transforms.AddResponseTransform(async responseContext =>
@@ -47,7 +72,7 @@ builder.Services.AddReverseProxy()
 
             var stream = await responseContext.ProxyResponse!.Content.ReadAsStreamAsync();
             using var reader = new StreamReader(stream);
-            // TODO: size limits, timeouts
+            
             var body = await reader.ReadToEndAsync();
 
             if (!string.IsNullOrEmpty(body))
@@ -78,7 +103,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(secretKey),
+            IssuerSigningKey = new SymmetricSecurityKey(jwtSecretKey),
             ValidateIssuer = false,
             ValidateAudience = false,
             ValidateLifetime = true,
@@ -165,6 +190,72 @@ app.Map("/health", async context =>
 {
     await context.Response.WriteAsync("OK");
 });
+
+if(app.Environment.IsDevelopment())
+{
+    app.Map("/encrypt", async context =>
+    {
+        using var reader = new StreamReader(context.Request.Body);
+                
+        var body = await reader.ReadToEndAsync();
+        Console.WriteLine($"encrypt body: {body}");
+
+        // byte[] key = new byte[32];  // 32-byte, 256bit
+        // new Random().NextBytes(key);
+        // byte[] iv = new byte[16];  // 16-byte initialization vector
+        // new Random().NextBytes(iv); // randomize the IV
+
+        byte[] plainBytes = Encoding.UTF8.GetBytes(body);
+
+        var cipherBytes = Cryptography.Encrypt(plainBytes, key, iv);
+        await context.Response.WriteAsync(Convert.ToBase64String(cipherBytes));
+    });
+
+    app.Map("/decrypt", async context =>
+    {
+        using var reader = new StreamReader(context.Request.Body);
+                
+        var body = await reader.ReadToEndAsync();
+        Console.WriteLine($"decrypt body: {body}");
+
+        var cipherBytes = Convert.FromBase64String(body);
+
+        byte[] decryptedBytes = Cryptography.Decrypt(cipherBytes, key, iv);
+        await context.Response.WriteAsync(Encoding.UTF8.GetString(decryptedBytes));
+    });
+
+    app.Map("/token", async context =>
+    {
+        DateTime localDate = DateTime.Now;
+        // DateTime utcDate = DateTime.UtcNow;
+
+        var securityKey = new SymmetricSecurityKey(jwtSecretKey);
+        var creds = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+
+        // var claims = new[] {
+        //     new Claim("id", "1"),
+        //     new Claim(JwtRegisteredClaimNames.Sub, "test"),            
+        //     new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+        // };
+
+        var claims = new List<Claim> {
+            new("id", "1"),
+            new(JwtRegisteredClaimNames.Sub, "test"),            
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+        };
+
+        var token = new JwtSecurityToken(
+            notBefore: localDate,
+            expires: localDate.AddMinutes(30),
+            signingCredentials: creds,
+            claims: claims
+        );
+
+        var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
+
+        await context.Response.WriteAsync(tokenString);
+    });
+}
 
 app.Run();
 
@@ -273,6 +364,51 @@ namespace ApiGateway
             Console.WriteLine($"JWT Verify: {result}");
 
             return result;
+        }
+    }
+
+    public static class Cryptography
+    {
+        public static byte[] Encrypt(byte[] plainBytes, byte[] key, byte[] iv)
+        {
+            byte[]? encryptedBytes = null;
+
+            using (Aes aes = Aes.Create())
+            {
+                aes.KeySize = 256;
+                aes.Key = key;
+                aes.IV = iv;
+                aes.Mode = CipherMode.CBC;
+                aes.Padding = PaddingMode.PKCS7;
+
+                using (ICryptoTransform encryptor = aes.CreateEncryptor())
+                {
+                    encryptedBytes = encryptor.TransformFinalBlock(plainBytes, 0, plainBytes.Length);
+                }
+            }
+
+            return encryptedBytes;
+        }
+
+        public static byte[] Decrypt(byte[] cipherBytes, byte[] key, byte[] iv)
+        {
+            byte[]? decryptedBytes = null;
+
+            using (Aes aes = Aes.Create())
+            {
+                aes.KeySize = 256;
+                aes.Key = key;
+                aes.IV = iv;
+                aes.Mode = CipherMode.CBC;
+                aes.Padding = PaddingMode.PKCS7;
+
+                using (ICryptoTransform decryptor = aes.CreateDecryptor())
+                {
+                    decryptedBytes = decryptor.TransformFinalBlock(cipherBytes, 0, cipherBytes.Length);
+                }
+            }
+
+            return decryptedBytes;
         }
     }
 }

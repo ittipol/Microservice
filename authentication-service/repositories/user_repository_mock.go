@@ -27,10 +27,10 @@ func (m *userRepositoryMock) GetUserByEmail(ctx context.Context, email string) (
 	return args.Get(0).(User), args.Error(1)
 }
 
-func (m *userRepositoryMock) GetUserByRefreshToken(ctx context.Context, id int, refreshToken string) (user User, err error) {
+func (m *userRepositoryMock) GetLatestRefreshToken(ctx context.Context, id int, refreshToken string) (token string, err error) {
 	args := m.Called(id)
 
-	return args.Get(0).(User), args.Error(1)
+	return args.Get(0).(string), args.Error(1)
 }
 
 func (m *userRepositoryMock) SaveRefreshToken(ctx context.Context, id int, refreshToken string) error {

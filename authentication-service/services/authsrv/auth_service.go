@@ -111,7 +111,7 @@ func (s authService) Refresh(ctx context.Context, headers map[string]string) (re
 	id := int(claims["id"].(float64))
 
 	// Check it's latest refresh token in database
-	user, err := s.userRepository.GetUserByRefreshToken(mainSpan.GetContext(), id, tokenString)
+	latestRefreshToken, err := s.userRepository.GetLatestRefreshToken(mainSpan.GetContext(), id, tokenString)
 
 	if err != nil {
 		logs.Error(err)
@@ -120,8 +120,15 @@ func (s authService) Refresh(ctx context.Context, headers map[string]string) (re
 		return res, errs.NewUnexpectedError()
 	}
 
+	if err := helpers.CheckRefreshTokenIsLatest(tokenString, latestRefreshToken); err != nil {
+		logs.Error(err)
+		mainSpan.RecordError(err)
+		mainSpan.SetStatus(codes.Error, codes.Error.String())
+		return res, errs.NewUnexpectedError()
+	}
+
 	// Gen new token
-	accessToken, refreshToken, err := s.jwtToken.GenToken(user.ID)
+	accessToken, refreshToken, err := s.jwtToken.GenToken(id)
 
 	if err != nil {
 		mainSpan.RecordError(err)
@@ -130,7 +137,7 @@ func (s authService) Refresh(ctx context.Context, headers map[string]string) (re
 	}
 
 	// Save new refresh token into database
-	s.userRepository.SaveRefreshToken(mainSpan.GetContext(), user.ID, refreshToken)
+	s.userRepository.SaveRefreshToken(mainSpan.GetContext(), id, refreshToken)
 
 	if err != nil {
 		logs.Error(err)

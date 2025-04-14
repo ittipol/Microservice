@@ -39,8 +39,26 @@ func GetDbConnection(dsn string) *gorm.DB {
 	conn, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 
 	if err != nil {
-		panic("failed to connect database")
+		panic("[conn] failed to connect database")
 	}
+
+	sqlDB, err := conn.DB()
+
+	if err != nil {
+		panic("[sqlDB] failed to connect database")
+	}
+
+	// Connection Pool: avoid the overhead of opening and closing database connection all the time
+	// A connection Pool keeps these connections ready to go making working with databases much faster
+
+	// SetMaxIdleConns sets the maximum number of connections in the idle connection pool.
+	sqlDB.SetMaxIdleConns(10)
+
+	// SetMaxOpenConns sets the maximum number of open connections to the database.
+	sqlDB.SetMaxOpenConns(100)
+
+	// SetConnMaxLifetime sets the maximum amount of time a connection may be reused.
+	sqlDB.SetConnMaxLifetime(time.Hour)
 
 	fmt.Println("Database Connected")
 

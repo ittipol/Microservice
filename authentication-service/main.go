@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/redis/go-redis/v9"
 	"go.opentelemetry.io/contrib/bridges/otelslog"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/log/global"
@@ -57,6 +58,7 @@ func main() {
 	appPort := os.Getenv("APP_PORT")
 	appDsnPath := os.Getenv("APP_DSN_PATH")
 	appSecretPath := os.Getenv("APP_SECRET_PATH")
+	appRedisSecretPath := os.Getenv("APP_REDIS_SECRET_PATH")
 	otlpEndpoint := os.Getenv("APP_OTEL_COL_ENDPOINT")
 
 	fmt.Println("APP_VERSION:", version)
@@ -91,19 +93,25 @@ func main() {
 	// ----
 
 	result, err := loadJson(appDsnPath)
-
 	if err != nil {
 		panic(err)
 	}
 
 	db := initDbConnection(result["db_connection"].(string))
-
 	db.Migrator().AutoMigrate(repositories.User{})
 
 	// ========================================================================
 
-	result, err = loadJson(appSecretPath)
+	result, err = loadJson(appRedisSecretPath)
+	if err != nil {
+		panic(err)
+	}
 
+	redisClient := initRedisConnection(result["db_connection"].(string))
+
+	// ========================================================================
+
+	result, err = loadJson(appSecretPath)
 	if err != nil {
 		panic(err)
 	}
@@ -200,7 +208,7 @@ func main() {
 
 	// ========================================================================
 
-	userRepository := repositories.NewUserRepository(db, tracer)
+	userRepository := repositories.NewUserRepository(db, redisClient, tracer)
 
 	authService := authsrv.NewAuthService(userRepository, appJwt, tracer)
 	userService := usersrv.NewUserService(userRepository, appJwt, tracer)
@@ -344,6 +352,10 @@ func initDbConnection(dsn string) *gorm.DB {
 // 		false,
 // 	)
 // }
+
+func initRedisConnection(dsn string) *redis.Client {
+	return database.GetRedisConnection(dsn)
+}
 
 func loadJson(path string) (map[string]interface{}, error) {
 	jsonFile, err := os.Open(path)
