@@ -13,6 +13,7 @@ using Yarp.ReverseProxy.Transforms;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var useEncryption = builder.Configuration.GetSection("UseEncryption").Get<bool>();
 var key = Convert.FromBase64String(builder.Configuration.GetSection("AES:Secret").Get<string>() ?? "");
 var iv = Convert.FromBase64String(builder.Configuration.GetSection("AES:IV").Get<string>() ?? "");
 var jwtSecretKey = Convert.FromBase64String(builder.Configuration.GetSection("Jwt:Secret").Get<string>() ?? "");
@@ -49,12 +50,15 @@ builder.Services.AddReverseProxy()
             {
                 // body = body.Replace("Data", "value");
 
-                Console.WriteLine($"AddRequestTransform: {body}");
+                Console.WriteLine($"AddRequestTransform [origin]: {body}");
 
-                var cipherBytes = Convert.FromBase64String(body);
-                byte[] decryptedBytes = Cryptography.Decrypt(cipherBytes, key, iv);
-                Console.WriteLine($"AddRequestTransform [Decrypt]: {Encoding.UTF8.GetString(decryptedBytes)}");
-                body = Encoding.UTF8.GetString(decryptedBytes);
+                if(useEncryption)
+                {
+                    var cipherBytes = Convert.FromBase64String(body);
+                    byte[] decryptedBytes = Cryptography.Decrypt(cipherBytes, key, iv);
+                    Console.WriteLine($"AddRequestTransform [Decrypt]: {Encoding.UTF8.GetString(decryptedBytes)}");
+                    body = Encoding.UTF8.GetString(decryptedBytes);
+                }                
 
                 var bytes = Encoding.UTF8.GetBytes(body);
                 // Change Content-Length to match the modified body, or remove it

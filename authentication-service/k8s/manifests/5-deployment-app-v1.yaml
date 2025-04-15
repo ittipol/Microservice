@@ -43,6 +43,13 @@ spec:
           {{- with secret "key/jwt-secret-key" -}}
             {{ .Data | toJSON }}
           {{- end }}
+        vault.hashicorp.com/agent-inject-secret-redis-secret: "key/redis-secret"
+        vault.hashicorp.com/agent-inject-template-redis-secret: |
+          {
+          {{- with secret "key/redis-secret" -}}
+            "db_connection": "redis://:{{ .Data.password }}@redis-service.redis.svc.cluster.local:6379/0"
+          {{- end }}
+          }
         vault.hashicorp.com/role: "multiple-role"
       labels:
         app.kubernetes.io/app: auth-service

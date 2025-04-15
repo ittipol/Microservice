@@ -112,6 +112,21 @@ func main() {
 		return c.String(http.StatusOK, fmt.Sprintf("Cache hash set, %v", key))
 	})
 
+	e.GET("/cache/hash/exist", func(c echo.Context) error {
+
+		key := "cache_hash_test"
+
+		cmd := rdb.HExists(context.Background(), key, "value1")
+
+		fmt.Printf("cmd: %v\n", cmd)
+
+		if cmd.Err() != nil {
+			fmt.Printf("err: %v\n", cmd.Err())
+		}
+
+		return c.String(http.StatusOK, fmt.Sprintf("Cache hash set, %v | %v", key, cmd.Val()))
+	})
+
 	e.GET("/header", func(c echo.Context) error {
 
 		// header := c.Request().Header.Get("Authorization")
@@ -138,6 +153,40 @@ func main() {
 	// =========================
 
 	e.GET("/start-flow", func(c echo.Context) error {
+
+		return c.String(http.StatusOK, "Success")
+	})
+
+	e.GET("/get-content", func(c echo.Context) error {
+
+		// id := c.Request().Header.Get("id")
+
+		// check draft is expired
+		// true
+		// return error
+
+		if true {
+			// Draft not found or expired
+			return echo.NewHTTPError(http.StatusInternalServerError, "error")
+		}
+
+		// check user verify value in cache
+
+		key := "user_verify:<user_id>"
+
+		cmd := rdb.HExists(context.Background(), key, "verify_pin")
+
+		// not found -> return error
+		if cmd.Err() != nil {
+			fmt.Printf("err: %v\n", cmd.Err())
+			return echo.NewHTTPError(http.StatusInternalServerError, cmd.Err())
+		}
+
+		if !cmd.Val() {
+			return echo.NewHTTPError(http.StatusInternalServerError, "User has been not verify")
+		}
+
+		// found -> do next process
 
 		return c.String(http.StatusOK, "Success")
 	})

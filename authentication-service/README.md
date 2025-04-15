@@ -10,6 +10,11 @@ docker-compose up -d --build
 minikube image build -t auth-service:1.0 .
 ```
 
+### Connect to LoadBalancer services
+``` bash
+minikube tunnel
+```
+
 ### Test
 ``` bash
 go test authentication-service/services/usersrv/test

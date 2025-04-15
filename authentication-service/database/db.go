@@ -48,6 +48,9 @@ func GetDbConnection(dsn string) *gorm.DB {
 		panic("[sqlDB] failed to connect database")
 	}
 
+	fmt.Println("::: Use connection pool: to avoid the overhead of opening and closing database connection all the time")
+	fmt.Println("::: A connection Pool keeps these connections ready to go making working with databases much faster")
+
 	// Connection Pool: avoid the overhead of opening and closing database connection all the time
 	// A connection Pool keeps these connections ready to go making working with databases much faster
 

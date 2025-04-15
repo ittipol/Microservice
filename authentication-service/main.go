@@ -65,6 +65,7 @@ func main() {
 	fmt.Println("APP_PORT:", appPort)
 	fmt.Println("APP_DSN_PATH:", appDsnPath)
 	fmt.Println("APP_SECRET_PATH:", appSecretPath)
+	fmt.Println("APP_REDIS_SECRET_PATH:", appRedisSecretPath)
 	fmt.Println("APP_OTEL_COL_ENDPOINT:", otlpEndpoint)
 
 	// ---- Vault
@@ -304,6 +305,18 @@ func main() {
 		time.Sleep(time.Duration(n) * time.Millisecond)
 
 		return c.String(http.StatusInternalServerError, fmt.Sprintf("Sleeping %d milliseconds...\n", n))
+	})
+
+	e.GET("/cache/test", func(c echo.Context) error {
+
+		value := rand.Intn(10000)
+		key := "cache_test:random_value"
+
+		err := redisClient.Set(context.Background(), key, value, 10*time.Minute).Err()
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "Unexpected error")
+		}
+		return c.String(http.StatusOK, fmt.Sprintf("Cache set succeed, %v", key))
 	})
 
 	e.GET("/header", func(c echo.Context) error {
