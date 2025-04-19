@@ -11,7 +11,8 @@ RUN go build -o ./app
 
 # =================================================
 # FROM gcr.io/distroless/base-debian12 AS production
-FROM golang:1.24.0 AS production
+FROM gcr.io/distroless/base-debian12:debug AS production
+# FROM gcr.io/distroless/base-debian12:debug-nonroot AS production
 
 WORKDIR /go-app
 

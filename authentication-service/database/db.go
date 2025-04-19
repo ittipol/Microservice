@@ -48,6 +48,14 @@ func GetDbConnection(dsn string) *gorm.DB {
 		panic("[sqlDB] failed to connect database")
 	}
 
+	// OpenDB may just validate its arguments without creating a connection to the database
+	// To verify that the data source name is valid call Ping()
+	if err = sqlDB.Ping(); err != nil {
+		panic("[Ping] failed to connect database")
+	} else {
+		fmt.Println("[Ping] Database Connected")
+	}
+
 	fmt.Println("::: Use connection pool: to avoid the overhead of opening and closing database connection all the time")
 	fmt.Println("::: A connection Pool keeps these connections ready to go making working with databases much faster")
 
@@ -62,8 +70,6 @@ func GetDbConnection(dsn string) *gorm.DB {
 
 	// SetConnMaxLifetime sets the maximum amount of time a connection may be reused.
 	sqlDB.SetConnMaxLifetime(time.Hour)
-
-	fmt.Println("Database Connected")
 
 	return conn
 }

@@ -7,7 +7,9 @@ spec:
   hosts:
   - app.service.api # DNS for external access
   gateways:
-    - api-gateway/api-gateway # The name of gateway
+  # Can omit the namespace if gateway is in same
+  # Pattern: some-config-namespace/my-gateway
+  - api-gateway/proxy-gateway # The name of gateway
   http:
   - name: "api-gateway-route"
     match:

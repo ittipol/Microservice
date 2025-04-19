@@ -1,4 +1,5 @@
 # Authentication Service
+- Distroless image https://github.com/GoogleContainerTools/distroless
 
 ### Run Go application on local
 ``` bash
