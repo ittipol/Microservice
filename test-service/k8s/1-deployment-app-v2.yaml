@@ -8,12 +8,12 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: test-service
+      app.kubernetes.io/app: test-service
       version: v2
   template:
     metadata:
       labels:
-        app: test-service
+        app.kubernetes.io/app: test-service
         version: v2
         istio: monitor
     spec:

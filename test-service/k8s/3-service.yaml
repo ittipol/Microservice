@@ -9,4 +9,4 @@ spec:
     - name: http
       port: 5055
   selector:
-    app: test-service
+    app.kubernetes.io/app: test-service

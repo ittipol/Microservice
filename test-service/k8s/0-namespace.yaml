@@ -5,4 +5,4 @@ metadata:
   name: test-service
   labels:
     monitoring: prometheus
-    istio-injection: enabled
+    # istio-injection: enabled

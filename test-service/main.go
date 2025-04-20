@@ -22,7 +22,8 @@ func main() {
 	var c Config
 	c.loadConfig("config.yaml")
 
-	rdb := initRedisConnection(c.RedisConfig)
+	// rdb := initRedisConnection(c.RedisConfig)
+	rdb := initRedisClusterConnection()
 
 	e := echo.New()
 	// Debug mode
@@ -38,14 +39,17 @@ func main() {
 
 	e.GET("/cache/create", func(c echo.Context) error {
 
-		id := c.Request().Header.Get("id")
+		// id := c.Request().Header.Get("id")
+		fmt.Println("call /cache/create")
+
+		id := "1"
 
 		value := rand.Intn(10000)
 		key := fmt.Sprintf("user:%s:random_value", id)
 
 		err := rdb.Set(context.Background(), key, value, 10*time.Minute).Err()
 		if err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, "Unexpected error")
+			return echo.NewHTTPError(http.StatusInternalServerError, err)
 		}
 		return c.String(http.StatusOK, fmt.Sprintf("Cache success, %v", key))
 	})
@@ -53,6 +57,8 @@ func main() {
 	e.GET("/cache/set", func(c echo.Context) error {
 
 		key := "cache_test"
+
+		fmt.Println("call /cache/set")
 
 		err := rdb.Set(context.Background(), key, "test", 10*time.Minute).Err()
 		if err != nil {
@@ -209,4 +215,8 @@ func initRedisConnection(redisConfig RedisConfig) *redis.Client {
 		redisConfig.Port,
 		redisConfig.Database,
 	)
+}
+
+func initRedisClusterConnection() *redis.ClusterClient {
+	return database.GetRedisClusterConnection()
 }
