@@ -67,6 +67,10 @@ func GetRedisClusterConnection() *redis.ClusterClient {
 
 	// rdb2 := redis.NewClusterClient(&redis.ClusterOptions{
 	// 	NewClient: func(opt *redis.Options) *redis.Client {
+	// 		user, pass := userPassForAddr(opt.Addr)
+	// 		opt.Username = user
+	// 		opt.Password = pass
+	// 		opt.DB = 0
 
 	// 		return redis.NewClient(opt)
 	// 	},
@@ -75,4 +79,8 @@ func GetRedisClusterConnection() *redis.ClusterClient {
 	println("Redis cluster started...")
 
 	return rdb
+}
+
+func userPassForAddr(addr string) (string, string) {
+	return "username", "password"
 }
