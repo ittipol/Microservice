@@ -47,20 +47,24 @@ builder.Services.AddReverseProxy()
             
             var body = await reader.ReadToEndAsync();
             if (!string.IsNullOrEmpty(body))
-            {
-                // body = body.Replace("Data", "value");
-
+            {                
                 Console.WriteLine($"AddRequestTransform [origin]: {body}");
+
+                byte[]? bytes = null;
 
                 if(useEncryption)
                 {
                     var cipherBytes = Convert.FromBase64String(body);
-                    byte[] decryptedBytes = Cryptography.Decrypt(cipherBytes, key, iv);
-                    Console.WriteLine($"AddRequestTransform [Decrypt]: {Encoding.UTF8.GetString(decryptedBytes)}");
-                    body = Encoding.UTF8.GetString(decryptedBytes);
-                }                
+                    bytes = Cryptography.Decrypt(cipherBytes, key, iv);
+                    Console.WriteLine($"AddRequestTransform [Decrypt]: {Encoding.UTF8.GetString(bytes)}");
+                    // body = Encoding.UTF8.GetString(bytes);
+                }
+                else
+                {
+                    // body = body.Replace("Data", "value");
+                    bytes = Encoding.UTF8.GetBytes(body);
+                }
 
-                var bytes = Encoding.UTF8.GetBytes(body);
                 // Change Content-Length to match the modified body, or remove it
                 context.HttpContext.Request.Body = new MemoryStream(bytes);
                 // Request headers are copied before transforms are invoked, update any
@@ -80,11 +84,25 @@ builder.Services.AddReverseProxy()
             var body = await reader.ReadToEndAsync();
 
             if (!string.IsNullOrEmpty(body))
-            {
-                responseContext.SuppressResponseBody = true;
+            {            
+                byte[]? bytes = null;
 
-                // body = body.Replace("Bravo", "Charlie");
-                var bytes = Encoding.UTF8.GetBytes(body);
+                if(useEncryption)
+                {
+                    var plaintextBytes = Encoding.UTF8.GetBytes(body);
+                    var cipherBytes = Cryptography.Encrypt(plaintextBytes, key, iv);
+                    var base64 = Convert.ToBase64String(cipherBytes);
+                    Console.WriteLine($"AddResponseTransform [Encrypt]: {base64}");
+                    bytes = Encoding.UTF8.GetBytes(base64);
+                }
+                else
+                {
+                    // body = body.Replace("Bravo", "Charlie");
+                    bytes = Encoding.UTF8.GetBytes(body);
+                }
+
+                responseContext.SuppressResponseBody = true;
+                
                 // Change Content-Length to match the modified body, or remove it
                 responseContext.HttpContext.Response.ContentLength = bytes.Length;
                 // Response headers are copied before transforms are invoked, update
