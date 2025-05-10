@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"strconv"
 	"test-service/database"
 	"time"
 
@@ -22,8 +23,8 @@ func main() {
 	var c Config
 	c.loadConfig("config.yaml")
 
-	// rdb := initRedisConnection(c.RedisConfig)
-	rdb := initRedisClusterConnection()
+	rdb := initRedisConnection(c.RedisConfig)
+	// rdb := initRedisClusterConnection()
 
 	e := echo.New()
 	// Debug mode
@@ -99,6 +100,8 @@ func main() {
 
 	e.GET("/cache/hash/set", func(c echo.Context) error {
 
+		start := time.Now()
+
 		key := "cache_hash_test"
 
 		cmd := rdb.HSet(context.Background(), key, "value1", "user1")
@@ -115,7 +118,9 @@ func main() {
 			fmt.Printf("err: %v\n", cmd.Err())
 		}
 
-		return c.String(http.StatusOK, fmt.Sprintf("Cache hash set, %v", key))
+		duration := time.Since(start)
+
+		return c.String(http.StatusOK, fmt.Sprintf("Cache hash set, %v, time: [%s]", key, duration.String()))
 	})
 
 	e.GET("/cache/hash/exist", func(c echo.Context) error {
@@ -131,6 +136,70 @@ func main() {
 		}
 
 		return c.String(http.StatusOK, fmt.Sprintf("Cache hash set, %v | %v", key, cmd.Val()))
+	})
+
+	e.GET("/cache/hash/test/:n", func(c echo.Context) error {
+
+		key := "data_list"
+
+		n := c.Param("n")
+
+		number, err := strconv.Atoi(n)
+
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "Unexpected error")
+		}
+
+		if number > 100000 {
+			return echo.NewHTTPError(http.StatusInternalServerError, "Unexpected error")
+		}
+
+		rdb.Del(context.Background(), key)
+
+		start := time.Now()
+
+		for i := 1; i <= number; i++ {
+			rdb.HSet(context.Background(), key, fmt.Sprintf("%018d", i), "1")
+			fmt.Printf("%018d\n", i)
+		}
+
+		duration := time.Since(start)
+
+		return c.String(http.StatusOK, fmt.Sprintf("/cache/hash/test, time: [%s]", duration.String()))
+	})
+
+	e.GET("/cache/set/test/:n", func(c echo.Context) error {
+
+		key := "data_set"
+
+		n := c.Param("n")
+
+		number, err := strconv.Atoi(n)
+
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "Unexpected error")
+		}
+
+		if number > 100000 {
+			return echo.NewHTTPError(http.StatusInternalServerError, "Unexpected error")
+		}
+
+		rdb.Del(context.Background(), key)
+
+		start := time.Now()
+
+		for i := 1; i <= number; i++ {
+			err := rdb.SAdd(context.Background(), key, fmt.Sprintf("%018d", i))
+			fmt.Printf("%018d\n", i)
+
+			if err != nil {
+				fmt.Printf("%v\n", err)
+			}
+		}
+
+		duration := time.Since(start)
+
+		return c.String(http.StatusOK, fmt.Sprintf("/cache/set/test, time: [%s]", duration.String()))
 	})
 
 	e.GET("/header", func(c echo.Context) error {
