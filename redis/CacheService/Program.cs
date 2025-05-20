@@ -36,11 +36,9 @@ app.Map("/add", async context =>
 
 app.Map("/hash", async context =>
 {
-    // const string key = "aaaaa";
-
-    var key = "draft_data";
-    var key2 = "noti_data";
-    var total = 550;
+    const string key = "data_1";
+    const string key2 = "data_2";
+    const int total = 550;
 
     // var len = 36 + 255 + 255 + 255 + 255 + 1 + 1 + 255 + 20 + 20 + 26;
 
@@ -53,9 +51,9 @@ app.Map("/hash", async context =>
     // var stopWatch = new Stopwatch();
     stopWatch.Start();
 
-    // var noti = db.HashGetAll(key);
+    // var data = db.HashGetAll(key);
 
-    // foreach (var item in noti)
+    // foreach (var item in data)
     // {
     //     // 1 = success
     //     db.HashDelete(key, item.Value);
@@ -221,10 +219,169 @@ app.Map("/decompress", (HttpResponse response) =>
     // response.Headers.ContentType = "application/json; charset=utf-8";
 
     return Results.Ok(originalStr);
-    
-    // await context.Response.WriteAsync(originalStr);
 
+    // await context.Response.WriteAsync(originalStr);
+});
+
+app.Map("/test", async context =>
+{
+    CacheService.Compression.Compress(db);
+
+    await context.Response.WriteAsync("success");
 
 });
 
 app.Run();
+
+namespace CacheService
+{
+    public static class Compression
+    {
+        public static float ComputeSizeInMB(long size)
+        {
+            return (float)size / 1024f / 1024f;
+        }
+
+        public static string StringGen()
+        {
+            var sb = new StringBuilder();
+            for (int i = 1; i <= 2000000; i++)
+            {
+                sb.Append('a');
+            }
+            return sb.ToString();
+        }
+
+        public static void Compress(IDatabase db)
+        {
+            var hash = new HashEntry[3];
+
+            // var fileToCompress = "data.txt";
+
+            var originalStr = "test เทส";
+            // var originalStr = "ก"; // 3 byte
+            // var originalStr = "\""; // 1 byte            
+
+            // originalStr = StringGen();
+
+            byte[] uncompressedBytes = Encoding.UTF8.GetBytes(originalStr);
+
+            Stopwatch timer = new Stopwatch();
+
+            long uncompressedFileSize = uncompressedBytes.LongLength;
+            Console.WriteLine("{0} \n\n Uncompressed is {1:0.0000} MB large ({2} bytes) \n",
+                originalStr,
+                ComputeSizeInMB(uncompressedFileSize),
+                uncompressedFileSize);
+
+            // Compress it using Deflate (optimal)
+            using (MemoryStream compressedStream = new MemoryStream())
+            {
+                DeflateStream deflateStream = new DeflateStream(compressedStream, CompressionLevel.Optimal, true);
+
+                // Run the compression
+                timer.Start();
+                deflateStream.Write(uncompressedBytes, 0, uncompressedBytes.Length);
+                deflateStream.Close();
+                timer.Stop();
+
+                long compressedFileSize = compressedStream.Length;
+                Console.WriteLine("Compressed using Deflate algorithm (Optimal): {0:0.0000} MB [{1:0.00}%] in {2}ms | Size: {3}",
+                    ComputeSizeInMB(compressedFileSize),
+                    100f * (float)compressedFileSize / (float)uncompressedFileSize,
+                    timer.ElapsedMilliseconds,
+                    compressedFileSize);
+
+                timer.Reset();
+
+                var s = Convert.ToBase64String(compressedStream.ToArray());
+
+                long base64FileSize = s.Length;
+                Console.WriteLine("[Base64] Compressed using Deflate algorithm (Optimal): {0:0.0000} MB [{1:0.00}%] | Size: {2} \n",
+                    ComputeSizeInMB(base64FileSize),
+                    100f * (float)base64FileSize / (float)uncompressedFileSize,
+                    base64FileSize);
+
+                db.StringSet("b64_1", s);
+
+                hash[0] = new HashEntry("b64_1", s);
+            }
+
+            // Compress it using Deflate (fast)
+            using (MemoryStream compressedStream = new MemoryStream())
+            {
+                DeflateStream deflateStream = new DeflateStream(compressedStream, CompressionLevel.Fastest, true);
+
+                // Run the compression
+                timer.Start();
+                deflateStream.Write(uncompressedBytes, 0, uncompressedBytes.Length);
+                deflateStream.Close();
+                timer.Stop();
+
+                long compressedFileSize = compressedStream.Length;
+                Console.WriteLine("Compressed using Deflate algorithm (Fast): {0:0.0000} MB [{1:0.00}%] in {2}ms | Size: {3}",
+                    ComputeSizeInMB(compressedFileSize),
+                    100f * (float)compressedFileSize / (float)uncompressedFileSize,
+                    timer.ElapsedMilliseconds,
+                    compressedFileSize);
+
+                timer.Reset();
+
+                var s = Convert.ToBase64String(compressedStream.ToArray());
+
+                long base64FileSize = s.Length;
+                Console.WriteLine("[Base64] Compressed using Deflate algorithm (Fast): {0:0.0000} MB [{1:0.00}%] | Size: {2} \n",
+                    ComputeSizeInMB(base64FileSize),
+                    100f * (float)base64FileSize / (float)uncompressedFileSize,
+                    base64FileSize);
+
+                db.StringSet("b64_2", s);
+
+                hash[1] = new HashEntry("b64_2", s);
+            }
+
+            // Compress it using GZip
+            // string savedArchive = fileToCompress + ".gz";
+            using (MemoryStream compressedStream = new MemoryStream())
+            {
+                GZipStream gzipStream = new GZipStream(compressedStream, CompressionMode.Compress, true);
+
+                // Run the compression
+                timer.Start();
+                gzipStream.Write(uncompressedBytes, 0, uncompressedBytes.Length);
+                gzipStream.Close();
+                timer.Stop();
+
+                long compressedFileSize = compressedStream.Length;
+                Console.WriteLine("Compressed using GZip data format: {0:0.0000} MB [{1:0.00}%] in {2}ms | Size: {3}",
+                    ComputeSizeInMB(compressedFileSize),
+                    100f * (float)compressedFileSize / (float)uncompressedFileSize,
+                    timer.ElapsedMilliseconds,
+                    compressedFileSize);
+
+                // Save file
+                // using (FileStream saveStream = new FileStream(savedArchive, FileMode.Create))
+                // {
+                //     compressedStream.Position = 0;
+                //     compressedStream.CopyTo(saveStream);
+                // }
+
+                timer.Reset();
+
+                var s = Convert.ToBase64String(compressedStream.ToArray());
+
+                long base64FileSize = s.Length;
+                Console.WriteLine("[Base64] Compressed using GZip data format: {0:0.0000} MB [{1:0.00}%] | Size: {2} \n",
+                    ComputeSizeInMB(base64FileSize),
+                    100f * (float)base64FileSize / (float)uncompressedFileSize,
+                    base64FileSize);
+        
+                db.StringSet("b64_3", s);
+
+                hash[2] = new HashEntry("b64_3", s);
+            }
+
+            db.HashSet("hash", hash);
+        }        
+    }
+}
