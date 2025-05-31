@@ -73,3 +73,19 @@ func GetDbConnection(dsn string) *gorm.DB {
 
 	return conn
 }
+
+// func GetPostgresdbConnection() *gorm.DB {
+
+// 	conn, err := gorm.Open(postgres.New(postgres.Config{
+// 		DSN:                  "host=localhost user=admin password=password dbname=postgresdb port=5432 sslmode=disable TimeZone=Asia/Shanghai", // data source name, refer https://github.com/jackc/pgx
+// 		PreferSimpleProtocol: true,                                                                                                             // disables implicit prepared statement usage. By default pgx automatically uses the extended protocol
+// 	}), &gorm.Config{})
+
+// 	if err != nil {
+// 		panic("failed to connect database")
+// 	}
+
+// 	fmt.Println("Database Connected")
+
+// 	return conn
+// }
