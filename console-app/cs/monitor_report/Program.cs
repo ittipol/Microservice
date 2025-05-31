@@ -1,5 +1,5 @@
 ﻿var cpuLimit = 1000m;
-var memoryLimit = 1024m; // 1 Gibibyte (GiB) = 2^30 bytes = 1,073,741,824 bytes
+var memoryLimit = 1024m; // 1 Gibibyte (GiB)
 
 var pod = 1;
 // decimal[] cpuAvg = { 100.99m, 200.99m, 300.99m, 400.99m };
@@ -62,19 +62,21 @@ Console.WriteLine("ใช้ Memory สูงสุดต่อวันคิ�
 
 Console.WriteLine("\n\n ------ \n\n");
 
-string[] rpsDate = new string[5];
+var numberOfDate = 1;
+
+string[] rpsDate = new string[numberOfDate];
 rpsDate[0] = "date";
 
-decimal[] rpsMax = new decimal[5];
+decimal[] rpsMax = new decimal[numberOfDate];
 rpsMax[0] = 100m;
 
-decimal[] rpsAvg = new decimal[5];
+decimal[] rpsAvg = new decimal[numberOfDate];
 rpsAvg[0] = 100m;
 
 decimal totalRpsAvg = 0;
 decimal totalRpsMax = 0;
 
-for (int i = 0; i < 5; i++)
+for (int i = 0; i < numberOfDate; i++)
 {
     totalRpsAvg += rpsAvg[i];
     totalRpsMax += rpsMax[i];
@@ -89,8 +91,8 @@ for (int i = 0; i < 5; i++)
 
 Console.WriteLine("\n สรุปรวมอัตราการการเข้าใช้งาน \n");
 
-var totalRps = totalRpsAvg / rpsDate.Length;
-var totalRps2 = totalRpsMax / rpsDate.Length;
+var totalRps = totalRpsAvg / numberOfDate;
+var totalRps2 = totalRpsMax / numberOfDate;
 
 Console.WriteLine("มีการเข้าใช้งานมากสุด (Max) อยู่ที่ {0} requests per second", totalRps2.ToString());
 Console.WriteLine("มีการเข้าใช้งานเฉลี่ย (AVG) อยู่ที่ {0} requests per second", totalRps.ToString());
