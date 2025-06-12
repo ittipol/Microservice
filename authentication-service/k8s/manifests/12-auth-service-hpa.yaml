@@ -1,39 +1,40 @@
-# apiVersion: autoscaling/v2
-# kind: HorizontalPodAutoscaler
-# metadata:
-#   name: auth-service-hpa
-#   namespace: auth-service
-# spec:
-#   scaleTargetRef:
-#     apiVersion: apps/v1
-#     kind: Deployment
-#     name: auth-service-v1
-#   minReplicas: 1
-#   maxReplicas: 3
-#   metrics:
-#   - type: Resource
-#     resource:
-#       name: cpu
-#       target:
-#         type: Utilization
-#         averageUtilization: 50
-#   behavior:    
-#     scaleDown:
-#       stabilizationWindowSeconds: 300 # waiting 300s before scale down
-#       policies:
-#       # - type: Percent
-#       #   value: 10
-#       #   periodSeconds: 15
-#       - type: Pods
-#         value: 1
-#         periodSeconds: 60 # scale down one pod every 1 min
-#       selectPolicy: Min
-#     scaleUp:
-#       stabilizationWindowSeconds: 0
-#       policies:
-#       # - type: Percent
-#       #   value: 100
-#       #   periodSeconds: 15
-#       - type: Pods
-#         value: 2
-#         periodSeconds: 60 # scale up no more than 2 pods per minute
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: auth-service-hpa
+  namespace: auth-service
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: auth-service-v1
+  minReplicas: 1
+  maxReplicas: 3
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 50
+  behavior:    
+    scaleDown:
+      stabilizationWindowSeconds: 300 # waiting 300s before scale down
+      policies:
+      # - type: Percent # pod scale down by percent
+      #   value: 10
+      #   periodSeconds: 60 # allows at most 10% of the current replicas to be scaled down in one minute
+      - type: Pods
+        value: 2
+        periodSeconds: 60 # no more than 2 Pods are removed per minute
+      selectPolicy: Min
+    scaleUp:
+      stabilizationWindowSeconds: 0 # no stabilization window
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15 # allows at most 100% of the current replicas to be scaled up in 15 second
+      - type: Pods
+        value: 4
+        periodSeconds: 15 # scale up no more than 4 pods per 15 second
+      selectPolicy: Max
