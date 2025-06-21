@@ -5,17 +5,54 @@ using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var redisConn = new ConfigurationOptions{
-    EndPoints = {"localhost:6379"},
+var redisConn = new ConfigurationOptions
+{
+    EndPoints = { "localhost:6379" },
     AbortOnConnectFail = false,
-    Password = "password"
+    User = "",
+    Password = "password",
+    Ssl = true,
+    AsyncTimeout = 30000,
+    SyncTimeout = 10000,
+    ClientName = System.Environment.MachineName
 };
 
-ConnectionMultiplexer redis = ConnectionMultiplexer.Connect(redisConn);
+// redisConn.EndPoints.Add("localhost:6379");
+// redisConn.EndPoints.Add("localhost:6379");
+// redisConn.EndPoints.Add("localhost:6379");
+
+// redisConn.CertificateSelection += delegate
+// {
+//     return new System.Security.Cryptography.X509Certificates.X509Certificate($@"{options.CerPath}");
+
+// };
+
+// var connectionString = builder.Configuration.GetSection("Redis").Get<RedisOptions>();
+
+IConnectionMultiplexer redis = ConnectionMultiplexer.Connect(redisConn);
 IDatabase db = redis.GetDatabase();
 // redis.Close();
 
+var found = db.Ping();
+
+// ============================================================
+// Use Framework Dependency injection
+// register service IConnectionMultiplexer
+builder.Services.AddSingleton<IConnectionMultiplexer>(serviceProvider => ConnectionMultiplexer.Connect(redisConn));
+// ============================================================
+
 var app = builder.Build();
+
+app.Map("/test1", async context =>
+{
+    var found = db.Ping();
+
+    db.StringSet("test_draft", "abcdef");
+
+    var x = db.StringGet("test_draft");
+    
+    await context.Response.WriteAsync(x.ToString());
+});
 
 app.Map("/add", async context =>
 {
