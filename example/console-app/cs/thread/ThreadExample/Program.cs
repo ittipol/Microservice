@@ -1,4 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System.Diagnostics;
+using System.Linq.Expressions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using ThreadExample;
@@ -19,9 +21,11 @@ var dataSource = dataSourceBuilder.Build();
 
 NpgsqlConnection conn = await dataSource.OpenConnectionAsync();
 
-var x = new ThreadTest();
+var obj = new ThreadTest();
 // await x.TestA();
-x.TestB(conn);
+obj.TestB(conn);
+// an object which is not being used, dispose it
+obj = null;
 
 // ============================================================
 // Use Framework Dependency injection
@@ -49,8 +53,9 @@ x.TestB(conn);
 
 // ============================================================
 
-// CallFunctionFrom<ThreadTest, Task>(
-//     x => x.TestC()
+// CallFunctionFrom(
+//     x => x,
+//     "Test"
 // );
 
 // Func structure
@@ -58,10 +63,10 @@ x.TestB(conn);
 // T = function args
 // Task = return type -> Task<void>
 
-// void CallFunctionFrom<T, TResult>(Expression<Func<T, TResult>> func) where T : class
+// TResult CallFunctionFrom<T, TResult>(Expression<Func<T, TResult>> func, T value) where T : class
 // {
 //     var compiledExpr = func.Compile();
-//     compiledExpr();
+//     return compiledExpr(value);
 // }
 
 
@@ -70,16 +75,17 @@ namespace ThreadExample
     public class ThreadTest
     {
         private readonly MyDbContext _context;
-
         private readonly Mutex mutex = new Mutex();
-
+        private readonly Mutex mutex2 = new Mutex();
+        private readonly Mutex mutex3 = new Mutex();
+        private readonly object lockObj = new object();
+        private bool stopRequested = false;
         private int runningThread = 0;
+        private int numItemDone = 0;
+        private int numMaxAvailableProcessor = 0;
+        private readonly int chunkSize = 10;
 
-        // private readonly int numIterations = 5;
-        // private readonly int numThreads = 6;
-        private readonly int chunkSize = 100;
-
-        public ThreadTest() {}
+        public ThreadTest() { }
 
         public ThreadTest(MyDbContext context)
         {
@@ -128,90 +134,161 @@ namespace ThreadExample
             Console.WriteLine("================ TASK CANCEL ================");
         }
 
+        private void CreateThread<TResult>(Func<TResult> func, string name)
+        {
+            try
+            {
+                Thread thread = new Thread(() => func());
+                thread.Name = name;
+                thread.Start();
+                Console.WriteLine("{0}, Generation: {1}", name, GC.GetGeneration(thread));                
+            }
+            catch (Exception)
+            {
+                
+            }            
+        }
+
         public void TestB(NpgsqlConnection conn)
         {
+            Console.WriteLine("The highest generation is {0}", GC.MaxGeneration);
+            // GC.Collect();
+
+            long memoryBefore = GC.GetTotalMemory(true);
+
+            // Console.WriteLine("Memory Used: {0}", memoryBefore);
+
+            Stopwatch stopWatch = new Stopwatch();
+            stopWatch.Start();
+
             // Get number of logical processor from CPU
             // int n = Environment.ProcessorCount;
 
-            int numThreads = Convert.ToInt32(Math.Ceiling(Convert.ToDecimal(Environment.ProcessorCount) / 2m));
+            // var totalRecord = CountAll(conn);
 
-            Console.WriteLine("numThreads: {0}", numThreads.ToString());
+            var totalRecord = 1000;
 
-            var totalRecord = 1250;
+            int totalRound = Convert.ToInt32(Math.Ceiling(Convert.ToDecimal(totalRecord) / chunkSize));
 
-            int numRounds = Convert.ToInt32(Math.Ceiling(Convert.ToDecimal(totalRecord) / chunkSize));
+            Console.WriteLine("Total Rounds: {0}", totalRound);
 
-            Console.WriteLine("numRounds: {0}", numRounds);
-
-            for (int i = 0; i < numThreads; i++)
+            try
             {
-                Console.WriteLine(i);
+                Thread gettingProcessorThread = new Thread(() => DoGettingProcessorThread());
+                gettingProcessorThread.Start();
 
-                var nn = i;
-                var connTemp = conn;
+                for (int i = 0; i < totalRound; i++)
+                {
+                    Console.WriteLine("Round: {0}", i + 1);
 
-                Thread t1 = new Thread(() => DoWorkB(connTemp, nn));
-                t1.Start();
+                    CreateThread(() => DoWorkB(conn, i, totalRecord), $"Thread {i}");
 
-                Console.WriteLine("Available processor {0}", Environment.ProcessorCount.ToString());
+                    mutex3.WaitOne();
+                    ++runningThread;
+                    Console.WriteLine("Thread {0} - [Increase by 1] runningThread: {1}", i, runningThread.ToString());
+                    mutex3.ReleaseMutex();
 
-                ++runningThread;
+                    while (runningThread >= numMaxAvailableProcessor)
+                    {
+                        Console.WriteLine("Block...");
+                        // Thread.Sleep(Timeout.Infinite);
+                        Thread.Sleep(5000);
+                    }
+
+                    Thread.Sleep(1000);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Exception: {0}", ex.Message);
+                throw;
+            }
+            finally
+            {
+                stopRequested = true;
+                Console.WriteLine("stopRequested: {0}", stopRequested.ToString());
             }
 
-            // await Task.Delay(1);
+            while (true)
+            {
+                if (runningThread <= 0)
+                {
+                    Console.WriteLine("All threads has been successfully processed");
+                    break;
+                }
 
+                Thread.Sleep(5000);
+            }
+
+            stopWatch.Stop();
+            // Get the elapsed time as a TimeSpan value.
+            TimeSpan ts = stopWatch.Elapsed;
+
+            // Format and display the TimeSpan value.
+            string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
+                ts.Hours, ts.Minutes, ts.Seconds,
+                ts.Milliseconds / 10);
+            Console.WriteLine("RunTime " + elapsedTime);
+
+            long memoryAfter = GC.GetTotalMemory(false);
+            Console.WriteLine("Memory Used = \t {0} KB", string.Format(((memoryAfter - memoryBefore) / 1000).ToString(), "n"));
+
+            // To dispose of the type directly, use Dispose method statement
+            mutex.Dispose();
+            mutex2.Dispose();
+            mutex3.Dispose();
+
+            // var gc = GC.GetGCMemoryInfo();
         }
 
-        private void DoWorkB(NpgsqlConnection conn, int threadNum)
+        private Task DoWorkB(NpgsqlConnection conn, int threadNum, long totalRecord)
         {
+            long memoryBefore = GC.GetTotalMemory(false);
 
             try
             {
                 // Simulate some work
+                IEnumerable<string> list = [];
 
-                var list = new List<string>();
                 var rand = new Random();
 
-                var offset = (threadNum * chunkSize);
+                var offset = threadNum * chunkSize;
 
-                var sql = $"SELECT email FROM users LIMIT {chunkSize} OFFSET {offset}";
+                var sql = string.Empty;
+
+                if (offset + chunkSize > totalRecord)
+                {
+                    sql = $"SELECT email FROM users LIMIT {totalRecord - offset} OFFSET {offset}";
+                }
+                else
+                {
+                    sql = $"SELECT email FROM users LIMIT {chunkSize} OFFSET {offset}";
+                }
 
                 Console.WriteLine(sql);
 
-                using (var cmd = new NpgsqlCommand(sql, conn))
+                list = GetChunkBySql(conn, threadNum, sql);
+
+                foreach (var item in list)
                 {
-                    Console.WriteLine("Thread {0} - waiting for mutex", threadNum);
-                    mutex.WaitOne();
-                    using (var reader = cmd.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            list.Add(reader.GetString(0));
-                        }
-                    }
-                    Console.WriteLine("Thread {0} - release mutex", threadNum);
-                    mutex.ReleaseMutex();
+                    mutex2.WaitOne();
+                    ++numItemDone;
+                    Console.WriteLine("Thread {0} - [{1}] Send {2}", threadNum, numItemDone.ToString(), item);
+                    mutex2.ReleaseMutex();
 
-                    foreach (var item in list)
-                    {
-                        Console.WriteLine("Thread {0} - Send {1}", threadNum, item);
-
-                        Thread.Sleep(rand.Next(100, 1001));
-                    }
-
+                    Thread.Sleep(rand.Next(100, 1001));
                 }
 
-                // Thread.Sleep(100);
                 // Task.Delay(100).Wait();
 
                 Console.WriteLine("Thread {0} - work done", threadNum);
 
-                mutex.WaitOne();
+                mutex3.WaitOne();
                 --runningThread;
-                Console.WriteLine("Thread {0} - runningThread: {1}", threadNum, runningThread.ToString());
-                mutex.ReleaseMutex();
+                Console.WriteLine("Thread {0} - [Decrease by 1] runningThread: {1}", threadNum, runningThread.ToString());
+                mutex3.ReleaseMutex();
             }
-            catch (System.Exception)
+            catch (Exception)
             {
                 mutex.ReleaseMutex();
                 throw;
@@ -220,6 +297,16 @@ namespace ThreadExample
             {
                 // mutex.ReleaseMutex();
             }
+
+            long memoryAfter = GC.GetTotalMemory(false);
+            Console.WriteLine("Thread {0} --> Memory Used [Before GC] = \t {1} KB", threadNum, string.Format(((memoryAfter - memoryBefore) / 1000).ToString(), "n"));
+
+            GC.Collect();
+
+            long memoryAfter2 = GC.GetTotalMemory(false);
+            Console.WriteLine("Thread {0} --> Memory Used [After GC] = \t {1} KB", threadNum, string.Format(((memoryAfter2 - memoryBefore) / 1000).ToString(), "n"));
+
+            return Task.FromResult<int?>(null);
         }
 
         public async Task TestC()
@@ -238,10 +325,16 @@ namespace ThreadExample
                     // var x = Thread.CurrentThread.ManagedThreadId;
                     // Console.WriteLine(x.ToString());
 
-                    var collection = await GetChunk();
-                    foreach (var item in collection)
+                    // var collection = await GetChunk();
+                    // foreach (var item in collection)
+                    // {
+                    //     Console.WriteLine("Item: {0}", item);
+                    // }
+
+                    lock (lockObj)
                     {
-                        Console.WriteLine("Item: {0}", item);
+                        // do inside what needs to be done - executed on a single thread only
+                        // counter++;
                     }
 
                     Console.WriteLine("================");
@@ -258,6 +351,29 @@ namespace ThreadExample
             await Task.Delay(100);
         }
 
+        private IEnumerable<string> GetChunkBySql(NpgsqlConnection conn, int threadNum, string sql)
+        {
+            IEnumerable<string> list = [];
+
+            // To dispose of it indirectly, use using statement
+            using (var cmd = new NpgsqlCommand(sql, conn))
+            {
+                Console.WriteLine("Thread {0} - waiting for mutex", threadNum);
+                mutex.WaitOne();
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        list = Merge(list, [reader.GetString(0)]);
+                    }
+                }
+                Console.WriteLine("Thread {0} - release mutex", threadNum);
+                mutex.ReleaseMutex();
+            }
+
+            return list;
+        }
+
         private async Task<List<User>> GetChunk()
         {
             try
@@ -265,19 +381,54 @@ namespace ThreadExample
                 // var sql = $"SELECT email FROM users LIMIT {chunkSize} OFFSET {offset}";
                 return await _context.Users.Where(u => u.Name == "").Skip(0).Take(3).ToListAsync();
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
                 Console.WriteLine(ex.StackTrace);
             }
-            
+
             return [];
         }
 
-        private void ThreadStart(ThreadStart start)
+        private long CountAll(NpgsqlConnection conn)
         {
-            Thread thread1 = new Thread(start);
-            thread1.Start();
+            using var cmd = new NpgsqlCommand("SELECT COUNT(id) FROM users WHERE status = 1", conn);
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                return reader.GetInt64(0);
+            }
+
+            return 0;
+        }
+
+        private IEnumerable<T> Merge<T>(IEnumerable<T> first, IEnumerable<T> second)
+        {
+            foreach (var item in first) yield return item;
+            foreach (var item in second) yield return item;
+        }
+
+        public static IEnumerable<Tout> ProcessList<Tin, Tout>(IEnumerable<Tin> values, Func<Tin, Tout> func)
+        {
+            foreach (var item in values)
+            {
+                yield return func(item);
+            }
+        }
+
+        private void DoGettingProcessorThread()
+        {
+            while (!stopRequested)
+            {
+                numMaxAvailableProcessor = GetMaxAvailableProcessor();
+                Console.WriteLine("numMaxAvailableProcessor: {0}", numMaxAvailableProcessor.ToString());
+                Thread.Sleep(10000);
+            }
+        }
+        
+        private int GetMaxAvailableProcessor()
+        {
+            return Convert.ToInt32(Math.Floor(Convert.ToDecimal(Environment.ProcessorCount) * 0.7m));
         }
     }
 }

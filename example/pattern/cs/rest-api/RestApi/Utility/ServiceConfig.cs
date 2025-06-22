@@ -9,7 +9,7 @@ public static class ServiceConfig
         return services;
     }
 
-    public static IServiceCollection AddMyDependencyGroup(this IServiceCollection services)
+    public static IServiceCollection AddDependencyGroup(this IServiceCollection services)
     {
         // services.AddScoped<IThreadTest, ThreadTest>();
         // services.AddScoped<IThreadTest2, ThreadTest2>();

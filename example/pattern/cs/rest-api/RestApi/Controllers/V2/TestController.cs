@@ -1,50 +1,33 @@
-// using Asp.Versioning;
-// using Microsoft.AspNetCore.Mvc;
+using Asp.Versioning;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.FeatureManagement;
+using Microsoft.FeatureManagement.Mvc;
 
-// namespace RestApi.Controllers;
+namespace RestApi.Controllers.V2;
 
-// [ApiVersion(1, Deprecated = true)]
-// [ApiVersion(2)]
-// [ApiVersion(3)]
-// [ApiController]
-// [Produces("application/json")]
-// [Route("api/v{v:apiVersion}/[controller]")]
-// public class TestController : ControllerBase
-// {
-//     private readonly ILogger<TestController> _logger;
+[ApiVersion(2)]
+[ApiController]
+[Produces("application/json")]
+[Route("api/v{v:apiVersion}")]
+public class TestV2Controller : ControllerBase
+{
+    private readonly ILogger<TestController> _logger;
+    private readonly IFeatureManager _featureManager;
 
-//     public TestController(ILogger<TestController> logger)
-//     {
-//         _logger = logger;
-//     }
+    public TestV2Controller(ILogger<TestController> logger, IFeatureManager featureManager)
+    {
+        _logger = logger;
+        _featureManager = featureManager;
+    }
 
-//     [MapToApiVersion(1)]
-//     [HttpGet("health")]
-//     public string HealthV1()
-//     {
-//         _logger.LogInformation("Running at {now}", DateTime.UtcNow);
-//         return "1.0";
-//     }
+    [FeatureGate("FeatureV2")]
+    [HttpGet("features")]
+    public async Task<IActionResult> FeatureFlag()
+    {
+        var featureA = await _featureManager.IsEnabledAsync("FeatureA");
+        var featureB = await _featureManager.IsEnabledAsync("FeatureB");        
+        var featureNames = _featureManager.GetFeatureNamesAsync();
 
-//     [MapToApiVersion(1)]
-//     [HttpGet("data/{workoutId}")]
-//     public IActionResult GetWorkoutV1(Guid workoutId)
-//     {
-//         return Ok("xxx");
-//     }
-
-//     [MapToApiVersion(2)]
-//     [HttpGet("health")]
-//     public string HealthV2()
-//     {
-//         _logger.LogInformation("Running at {now}", DateTime.UtcNow);
-//         return "2.0";
-//     }
-
-//     [MapToApiVersion(2)]
-//     [HttpGet("data/{jobId}")]
-//     public IActionResult GetWorkoutV2(Guid jobId)
-//     {
-//         return Ok(jobId.ToString());
-//     }
-// }
+        return Ok(new { featureA, featureB, featureNames });
+    }
+}

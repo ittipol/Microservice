@@ -37,8 +37,6 @@ builder.Services.AddApiVersioning(options =>
     options.SubstituteApiVersionInUrl = true;
 });
 
-// builder.Services.ConfigureOptions();
-
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -62,7 +60,9 @@ builder.Services.AddSwaggerGen(options =>
     // }
 });
 
-builder.Services.AddBackgroundTasks(builder.Configuration);
+builder.Services
+.AddBackgroundTasks(builder.Configuration)
+.AddFeatureFlag(builder.Configuration);
 
 var app = builder.Build();
 
