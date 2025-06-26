@@ -483,6 +483,8 @@ namespace ThreadExample
 
         private TResult? SafeProcess2<T, TResult>(T input, Func<T, TResult?> func)
         {
+            // To dispose of it indirectly, use using statement
+            // When the using scope ends, it’ll call Dispose() on the mutex
             using (Mutex mutexEx = new Mutex(true, "name"))
                 if (mutexEx.WaitOne(1000, true))
                 {
