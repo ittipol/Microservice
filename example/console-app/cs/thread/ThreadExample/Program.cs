@@ -1,5 +1,7 @@
 ﻿using System.Diagnostics;
-using System.Linq.Expressions;
+using System.Threading.Tasks;
+using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Running;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
@@ -21,8 +23,17 @@ var dataSource = dataSourceBuilder.Build();
 
 NpgsqlConnection conn = await dataSource.OpenConnectionAsync();
 
+// ============================================================
+// Run Benchmark
+// command:
+// dotnet build
+// dotnet run -c Release
+// BenchmarkRunner.Run<Benchmarks>();
+
+// ============================================================
+// Run Thread Test
 var obj = new ThreadTest();
-// await x.TestA();
+// await obj.TestA();
 obj.TestB(conn);
 // an object which is not being used, dispose it
 obj = null;
@@ -72,6 +83,381 @@ obj = null;
 
 namespace ThreadExample
 {
+    [MemoryDiagnoser]
+    public class Benchmarks
+    {
+        private readonly IServiceProvider _serviceProvider;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
+
+        public Benchmarks() { }
+
+        public Benchmarks(IServiceProvider serviceProvider, IServiceScopeFactory serviceScopeFactory)
+        {
+            _serviceProvider = serviceProvider;
+            _serviceScopeFactory = serviceScopeFactory;
+        }
+
+        // [Benchmark]
+        // public int ForLoopSumThread()
+        // {
+
+        //     List<Task> t = new List<Task>();
+
+        //     for (int i = 0; i < 10; i++)
+        //     {
+        //         Task x = Task.Run(() =>
+        //         {
+        //             int[] _numbers = Enumerable.Range(1, 1000).ToArray();
+        //             int sum = 0;
+        //             for (int j = 0; j < _numbers.Length; j++)
+        //             {
+        //                 sum += _numbers[j];
+        //             }
+
+        //             GC.Collect();
+
+        //             Console.WriteLine("ForLoopSumThread {0}", i);
+        //         });
+
+        //         t.Add(x);
+        //     }
+
+        //     Task.WaitAll(t.ToArray());
+
+        //     return 0;
+        // }
+
+        // [Benchmark]
+        // public int ForLoopSumThreadGcGen0AndOnceGen1And2()
+        // {
+
+        //     List<Task> t = new List<Task>();
+
+        //     for (int i = 0; i < 10; i++)
+        //     {
+        //         Task x = Task.Run(() =>
+        //         {
+        //             int[] _numbers = Enumerable.Range(1, 1000).ToArray();
+        //             int sum = 0;
+        //             for (int j = 0; j < _numbers.Length; j++)
+        //             {
+        //                 sum += _numbers[j];
+        //             }
+
+        //             GC.Collect(0);
+
+        //             Console.WriteLine("ForLoopSumThreadGcGen0AndOnceGen1And2 {0}", i);
+        //         });
+
+        //         t.Add(x);
+        //     }
+
+        //     Task.WaitAll(t.ToArray());
+
+        //     GC.Collect();
+
+        //     return 0;
+        // }
+
+        // [Benchmark]
+        // public int ForLoopSumThreadNoGc()
+        // {
+
+        //     List<Task> t = new List<Task>();
+
+        //     for (int i = 0; i < 10; i++)
+        //     {
+        //         Task x = Task.Run(() =>
+        //         {
+        //             int[] _numbers = Enumerable.Range(1, 1000).ToArray();
+        //             int sum = 0;
+        //             for (int j = 0; j < _numbers.Length; j++)
+        //             {
+        //                 sum += _numbers[j];
+        //             }
+
+        //             Console.WriteLine("ForLoopSumThreadNoGc {0}", i);
+        //         });
+
+        //         t.Add(x);
+        //     }
+
+        //     Task.WaitAll(t.ToArray());
+
+        //     return 0;
+        // }
+
+        // [Benchmark]
+        // public int ForLoopSumThreadGcOnce()
+        // {
+
+        //     List<Task> t = new List<Task>();
+
+        //     for (int i = 0; i < 10; i++)
+        //     {
+        //         Task x = Task.Run(() =>
+        //         {
+        //             int[] _numbers = Enumerable.Range(1, 1000).ToArray();
+        //             int sum = 0;
+        //             for (int j = 0; j < _numbers.Length; j++)
+        //             {
+        //                 sum += _numbers[j];
+        //             }
+
+        //             Console.WriteLine("ForLoopSumThreadGcOnce {0}", i);
+        //         });
+
+        //         t.Add(x);
+        //     }
+
+        //     Task.WaitAll(t.ToArray());
+
+        //     GC.Collect();
+
+        //     return 0;
+        // }
+
+        // [Benchmark]
+        // public int ForLoopSumThreadGcOnceOnlyGen0()
+        // {
+
+        //     List<Task> t = new List<Task>();
+
+        //     for (int i = 0; i < 10; i++)
+        //     {
+        //         Task x = Task.Run(() =>
+        //         {
+        //             int[] _numbers = Enumerable.Range(1, 1000).ToArray();
+        //             int sum = 0;
+        //             for (int j = 0; j < _numbers.Length; j++)
+        //             {
+        //                 sum += _numbers[j];
+        //             }
+
+        //             Console.WriteLine("ForLoopSumThreadGcOnceOnlyGen0 {0}", i);
+        //         });
+
+        //         t.Add(x);
+        //     }
+
+        //     Task.WaitAll(t.ToArray());
+
+        //     GC.Collect(0);
+
+        //     return 0;
+        // }
+
+        // [Benchmark]
+        // public int ForLoopSumThreadGcOnceOnlyGen1()
+        // {
+
+        //     List<Task> t = new List<Task>();
+
+        //     for (int i = 0; i < 10; i++)
+        //     {
+        //         Task x = Task.Run(() =>
+        //         {
+        //             int[] _numbers = Enumerable.Range(1, 1000).ToArray();
+        //             int sum = 0;
+        //             for (int j = 0; j < _numbers.Length; j++)
+        //             {
+        //                 sum += _numbers[j];
+        //             }
+
+        //             Console.WriteLine("ForLoopSumThreadGcOnceOnlyGen1 {0}", i);
+        //         });
+
+        //         t.Add(x);
+        //     }
+
+        //     Task.WaitAll(t.ToArray());
+
+        //     GC.Collect(1);
+
+        //     return 0;
+        // }
+
+        // [Benchmark]
+        // public int ForLoopSumThreadGcOnceOnlyGen2()
+        // {
+
+        //     List<Task> t = new List<Task>();
+
+        //     for (int i = 0; i < 10; i++)
+        //     {
+        //         Task x = Task.Run(() =>
+        //         {
+        //             int[] _numbers = Enumerable.Range(1, 1000).ToArray();
+        //             int sum = 0;
+        //             for (int j = 0; j < _numbers.Length; j++)
+        //             {
+        //                 sum += _numbers[j];
+        //             }
+
+        //             Console.WriteLine("ForLoopSumThreadGcOnceOnlyGen2 {0}", i);
+        //         });
+
+        //         t.Add(x);
+        //     }
+
+        //     Task.WaitAll(t.ToArray());
+
+        //     GC.Collect(2);
+
+        //     return 0;
+        // }
+
+        // [Benchmark]
+        // public int ForLoopSum()
+        // {
+        //     int[] _numbers = Enumerable.Range(1, 1000).ToArray();
+        //     int sum = 0;
+        //     for (int j = 0; j < _numbers.Length; j++)
+        //     {
+        //         sum += _numbers[j];
+        //     }
+
+        //     return sum;
+        // }
+
+        // [Benchmark]
+        // public async Task TestA()
+        // {
+        //     // for (int i = 0; i < 100; i++)
+        //     // {
+        //     //     await Task.Yield();
+
+        //     //     var id = Thread.CurrentThread.ManagedThreadId;
+
+        //     //     await Task.CompletedTask;
+
+        //     //     await Task.FromResult(1);
+
+        //     //     Console.WriteLine(x.ToString());
+
+        //     // }
+
+        //     Func<Task> asyncHandler = async () => await Task.Delay(500);
+        //     Func<Task> taskYieldHandler = async () => await Task.Yield();
+
+        //     await DriverMethod(asyncHandler);
+        // }
+
+        // [Benchmark]
+        // public async Task TestAWithGc()
+        // {
+        //     // for (int i = 0; i < 100; i++)
+        //     // {
+        //     //     await Task.Yield();
+
+        //     //     var id = Thread.CurrentThread.ManagedThreadId;
+
+        //     //     await Task.CompletedTask;
+
+        //     //     await Task.FromResult(1);
+
+        //     //     Console.WriteLine(x.ToString());
+
+        //     // }
+
+        //     Func<Task> asyncHandler = async () => await Task.Delay(500);
+        //     Func<Task> taskYieldHandler = async () => await Task.Yield();
+
+        //     await DriverMethod(asyncHandler);
+
+        //     GC.Collect();
+        // }
+
+        // public async Task DriverMethod(Func<Task> handler)
+        // {
+        //     var cts = new CancellationTokenSource();
+
+        //     var runTask = RunUntilCancelAsync(handler, cts.Token);
+        //     await Task.Delay(2000);
+        //     cts.Cancel();
+        //     await runTask;
+        // }
+
+        // public async Task RunUntilCancelAsync(Func<Task> handler, CancellationToken token)
+        // {
+        //     while (!token.IsCancellationRequested)
+        //     {
+        //         Console.WriteLine("Executing handler...");
+        //         await handler();
+        //     }
+        //     Console.WriteLine("================ TASK CANCEL ================");
+        // }
+
+        // [Benchmark]
+        // public async Task TestGetChunkBySql()
+        // {
+        //     var dsn = "Server=localhost;Port=5432;Userid=admin;Password=password;Pooling=false;MinPoolSize=10;MaxPoolSize=20;Timeout=15;SslMode=Disable;Database=postgresdb;TimeZone=Asia/Bangkok";
+
+        //     IServiceCollection services = new ServiceCollection();
+
+        //     // register service ThreadTest
+        //     services.AddScoped<ThreadTest>();
+
+        //     // register service MyDbContext
+        //     services.AddDbContext<MyDbContext>(options => options.UseNpgsql(dsn));
+
+        //     var dataSourceBuilder = new NpgsqlDataSourceBuilder(dsn);
+        //     var dataSource = dataSourceBuilder.Build();
+
+        //     NpgsqlConnection conn = await dataSource.OpenConnectionAsync();
+
+        //     for (int i = 0; i < 10; i++)
+        //     {
+        //         var offset = i * chunkSize;
+        //         var sql = $"SELECT email FROM users LIMIT {chunkSize} OFFSET {offset}";
+        //         var list = GetChunkBySql(conn, i, sql);
+        //     }
+        // }
+
+        [Benchmark]
+        public async Task TestTestB()
+        {
+            var dsn = "Server=localhost;Port=5432;Userid=admin;Password=password;Pooling=false;MinPoolSize=10;MaxPoolSize=20;Timeout=15;SslMode=Disable;Database=postgresdb;TimeZone=Asia/Bangkok";
+
+            var dataSourceBuilder = new NpgsqlDataSourceBuilder(dsn);
+            var dataSource = dataSourceBuilder.Build();
+
+            NpgsqlConnection conn = await dataSource.OpenConnectionAsync();
+
+            // var obj = new TestA();
+            // obj.msgTest();
+
+            var obj = new ThreadTest();
+            obj.TestB(conn);            
+
+        }
+
+        public async Task scope()
+        {
+            using (var scope = _serviceScopeFactory.CreateScope())
+            {
+                var obj = scope.ServiceProvider.GetRequiredService<TestA>();
+
+                obj.msgTest();
+            }
+
+            using (var scope = _serviceProvider.CreateScope())
+            {
+                var obj = scope.ServiceProvider.GetRequiredService<TestA>();
+
+                obj.msgTest();
+            }
+        }
+    }
+
+    public class TestA
+    {
+        public void msgTest()
+        {
+            Console.WriteLine("msg");
+        }
+    }
+    
     public class ThreadTest
     {
         private readonly MyDbContext _context;
@@ -83,56 +469,29 @@ namespace ThreadExample
         private int runningThread = 0;
         private int numItemDone = 0;
         private int numMaxAvailableProcessor = 0;
-        private readonly int chunkSize = 100;
+        private readonly int chunkSize = 200;
 
         public ThreadTest() { }
 
         public ThreadTest(MyDbContext context)
         {
             _context = context;
-        }
+        }        
+        
+        // [Benchmark]
+        // public async Task TestTestB()
+        // {
+        //     var dsn = "Server=localhost;Port=5432;Userid=admin;Password=password;Pooling=false;MinPoolSize=10;MaxPoolSize=20;Timeout=15;SslMode=Disable;Database=postgresdb;TimeZone=Asia/Bangkok";
 
-        public async Task TestA()
-        {
-            // for (int i = 0; i < 100; i++)
-            // {
-            //     await Task.Yield();
+        //     var dataSourceBuilder = new NpgsqlDataSourceBuilder(dsn);
+        //     var dataSource = dataSourceBuilder.Build();
 
-            //     var id = Thread.CurrentThread.ManagedThreadId;
+        //     NpgsqlConnection conn = await dataSource.OpenConnectionAsync();
 
-            //     await Task.CompletedTask;
-
-            //     await Task.FromResult(1);
-
-            //     Console.WriteLine(x.ToString());
-
-            // }
-
-            Func<Task> asyncHandler = async () => await Task.Delay(500);
-            Func<Task> taskYieldHandler = async () => await Task.Yield();
-
-            await DriverMethod(asyncHandler);
-        }
-
-        public async Task DriverMethod(Func<Task> handler)
-        {
-            var cts = new CancellationTokenSource();
-
-            var runTask = RunUntilCancelAsync(handler, cts.Token);
-            await Task.Delay(2000);
-            cts.Cancel();
-            await runTask;
-        }
-
-        public async Task RunUntilCancelAsync(Func<Task> handler, CancellationToken token)
-        {
-            while (!token.IsCancellationRequested)
-            {
-                Console.WriteLine("Executing handler...");
-                await handler();
-            }
-            Console.WriteLine("================ TASK CANCEL ================");
-        }
+        //     var obj = new ThreadTest();
+        //     obj.TestB(conn);            
+            
+        // }
 
         private void CreateThread(Action func, string name)
         {
@@ -168,9 +527,8 @@ namespace ThreadExample
         public void TestB(NpgsqlConnection conn)
         {
             Console.WriteLine("The highest generation is {0}", GC.MaxGeneration);
-            // GC.Collect();
 
-            long memoryBefore = GC.GetTotalMemory(true);
+            // long memoryBefore = GC.GetTotalMemory(true);
 
             // Console.WriteLine("Memory Used: {0}", memoryBefore);
 
@@ -187,6 +545,12 @@ namespace ThreadExample
             int totalRound = Convert.ToInt32(Math.Ceiling(Convert.ToDecimal(totalRecords) / chunkSize));
 
             Console.WriteLine("Total Rounds: {0}", totalRound);
+
+            Console.WriteLine("{0}, Generation: {1}", nameof(mutex), GC.GetGeneration(mutex));
+            Console.WriteLine("{0}, Generation: {1}", nameof(mutex2), GC.GetGeneration(mutex2));
+            Console.WriteLine("{0}, Generation: {1}", nameof(mutex3), GC.GetGeneration(mutex3));
+            Console.WriteLine("{0}, Generation: {1}", nameof(chunkSize), GC.GetGeneration(chunkSize));
+            Console.WriteLine("{0}, Generation: {1}", nameof(totalRecords), GC.GetGeneration(totalRecords));
 
             try
             {
@@ -247,8 +611,8 @@ namespace ThreadExample
                 ts.Milliseconds / 10);
             Console.WriteLine("RunTime " + elapsedTime);
 
-            long memoryAfter = GC.GetTotalMemory(false);
-            Console.WriteLine("Memory Used = \t {0} KB", string.Format(((memoryAfter - memoryBefore) / 1000).ToString(), "n"));
+            // long memoryAfter = GC.GetTotalMemory(false);
+            // Console.WriteLine("Memory Used = \t {0} KB", string.Format(((memoryAfter - memoryBefore) / 1000).ToString(), "n"));
 
             // To dispose of the type directly, use Dispose method statement
             mutex.Dispose();
@@ -260,7 +624,11 @@ namespace ThreadExample
             // TPS
             var TotalSeconds = Math.Round(ts.TotalSeconds);
             var tps = totalRecords / TotalSeconds;
-            Console.WriteLine("Total Sec: {0} | TPS: {1}", TotalSeconds, tps);
+            Console.WriteLine("Total time taken: {0} Seconds | TPS: {1}", TotalSeconds, tps);
+
+            GC.Collect();
+
+            Console.WriteLine("GC Gen0: {0}, Gen1: {1}, Gen2: {2}", GC.CollectionCount(0), GC.CollectionCount(1), GC.CollectionCount(2));
         }
 
         private void DoWorkB(NpgsqlConnection conn, int threadNum, long totalRecord)
@@ -325,7 +693,7 @@ namespace ThreadExample
             // long memoryAfter = GC.GetTotalMemory(false);
             // Console.WriteLine("Thread {0} --> Memory Used [Before GC] = \t {1} KB", threadNum, string.Format(((memoryAfter - memoryBefore) / 1000).ToString(), "n"));
 
-            // GC.Collect();
+            // GC.Collect(0);
 
             // long memoryAfter2 = GC.GetTotalMemory(false);
             // Console.WriteLine("Thread {0} --> Memory Used [After GC] = \t {1} KB", threadNum, string.Format(((memoryAfter2 - memoryBefore) / 1000).ToString(), "n"));
@@ -377,28 +745,35 @@ namespace ThreadExample
 
         private IEnumerable<string> GetChunkBySql(NpgsqlConnection conn, int threadNum, string sql)
         {
-            long memoryBefore = GC.GetTotalMemory(true);
+            // long memoryBefore = GC.GetTotalMemory(true);
 
             IEnumerable<string> list = [];
 
-            // To dispose of it indirectly, use using statement
-            using (var cmd = new NpgsqlCommand(sql, conn))
+            try
             {
-                Console.WriteLine("Thread {0} - waiting for mutex", threadNum);
-                mutex.WaitOne();
-                using (var reader = cmd.ExecuteReader())
+                // To dispose of it indirectly, use using statement
+                using (var cmd = new NpgsqlCommand(sql, conn))
                 {
-                    while (reader.Read())
+                    Console.WriteLine("Thread {0} - waiting for mutex", threadNum);
+                    mutex.WaitOne();
+                    using (var reader = cmd.ExecuteReader())
                     {
-                        list = Merge(list, [reader.GetString(0)]);
+                        while (reader.Read())
+                        {
+                            list = Merge(list, [reader.GetString(0)]);
+                        }
                     }
+                    Console.WriteLine("Thread {0} - release mutex", threadNum);
+                    mutex.ReleaseMutex();
                 }
-                Console.WriteLine("Thread {0} - release mutex", threadNum);
-                mutex.ReleaseMutex();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("++++++++++++++++ GetChunkBySql error: {0}", ex.Message);
             }
 
-            long memoryAfter = GC.GetTotalMemory(false);
-            Console.WriteLine("Memory Used = \t {0} KB", string.Format(((memoryAfter - memoryBefore) / 1000).ToString(), "n"));
+            // long memoryAfter = GC.GetTotalMemory(false);
+            // Console.WriteLine("Memory Used = \t {0} KB", string.Format(((memoryAfter - memoryBefore) / 1000).ToString(), "n"));
 
             return list;
         }
@@ -526,14 +901,14 @@ namespace ThreadExample
                 mutexRef.ReleaseMutex();
                 // mutexRef.Dispose();
             }
-            
+
             return ret;
         }
 
         private void PrintThreadId(string name)
         {
             var currentThread = Thread.CurrentThread.GetHashCode();
-            Console.WriteLine("########## Thread[{0:d4} | {1}]", currentThread, name);
+            Console.WriteLine("############################## Thread[ currentThread = {0:d4} | name = {1} ]", currentThread, name);
         }
     }
 }
