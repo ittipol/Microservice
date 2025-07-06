@@ -8,7 +8,22 @@ using Npgsql;
 using ThreadExample;
 using ThreadExample.Models;
 
-var dsn = "Server=localhost;Port=5432;Userid=admin;Password=password;Pooling=false;MinPoolSize=10;MaxPoolSize=20;Timeout=15;SslMode=Disable;Database=postgresdb;TimeZone=Asia/Bangkok";
+string production = Environment.GetEnvironmentVariable("PRODUCTION") ?? "0";
+
+var dsn = string.Empty;
+
+if (production == "1")
+{
+    // internal
+    dsn = "Server=postgresql.postgresql.svc.cluster.local;Port=5432;Userid=admin;Password=password1234;Pooling=false;MinPoolSize=10;MaxPoolSize=20;Timeout=15;SslMode=Disable;Database=postgresdb;TimeZone=Asia/Bangkok";
+}
+else
+{
+    // localhost
+    dsn = "Server=localhost;Port=5432;Userid=admin;Password=password;Pooling=false;MinPoolSize=10;MaxPoolSize=20;Timeout=15;SslMode=Disable;Database=postgresdb;TimeZone=Asia/Bangkok";
+}
+
+Console.WriteLine(dsn);
 
 IServiceCollection services = new ServiceCollection();
 
@@ -432,7 +447,7 @@ namespace ThreadExample
 
         }
 
-        public async Task scope()
+        public async Task Scope()
         {
             using (var scope = _serviceScopeFactory.CreateScope())
             {
@@ -528,9 +543,7 @@ namespace ThreadExample
         {
             Console.WriteLine("The highest generation is {0}", GC.MaxGeneration);
 
-            // long memoryBefore = GC.GetTotalMemory(true);
-
-            // Console.WriteLine("Memory Used: {0}", memoryBefore);
+            long memoryBefore = GC.GetTotalMemory(true);
 
             Stopwatch stopWatch = new Stopwatch();
             stopWatch.Start();
@@ -540,7 +553,7 @@ namespace ThreadExample
 
             // var totalRecords = CountAll(conn);
 
-            var totalRecords = 2000;
+            var totalRecords = 10000;
 
             int totalRound = Convert.ToInt32(Math.Ceiling(Convert.ToDecimal(totalRecords) / chunkSize));
 
@@ -626,9 +639,15 @@ namespace ThreadExample
             var tps = totalRecords / TotalSeconds;
             Console.WriteLine("Total time taken: {0} Seconds | TPS: {1}", TotalSeconds, tps);
 
+            long memoryAfter = GC.GetTotalMemory(false);
+
             GC.Collect();
 
-            Console.WriteLine("GC Gen0: {0}, Gen1: {1}, Gen2: {2}", GC.CollectionCount(0), GC.CollectionCount(1), GC.CollectionCount(2));
+            Console.WriteLine("GC count Gen0: [{0}], Gen1: [{1}], Gen2: [{2}]", GC.CollectionCount(0), GC.CollectionCount(1), GC.CollectionCount(2));
+
+            Console.WriteLine("Memory Used (memoryBefore): {0} KB", string.Format((memoryBefore / 1000).ToString(), "n"));
+            Console.WriteLine("Memory Used (memoryAfter): {0} KB", string.Format((memoryAfter / 1000).ToString(), "n"));
+            Console.WriteLine("Memory Used = \t {0} KB", string.Format(((memoryAfter - memoryBefore) / 1000).ToString(), "n"));
         }
 
         private void DoWorkB(NpgsqlConnection conn, int threadNum, long totalRecord)
@@ -667,7 +686,7 @@ namespace ThreadExample
                     Console.WriteLine("Thread {0} - [{1}] Send {2}", threadNum, numItemDone.ToString(), item);
                     mutex2.ReleaseMutex();
 
-                    Thread.Sleep(rand.Next(100, 501));
+                    // Thread.Sleep(rand.Next(100, 501));
                     // Thread.Sleep(100);
                 }
 
@@ -825,7 +844,7 @@ namespace ThreadExample
             while (!stopRequested)
             {
                 numMaxAvailableProcessor = GetMaxAvailableProcessor();
-                Console.WriteLine("----------> \t numMaxAvailableProcessor: {0}", numMaxAvailableProcessor.ToString());
+                Console.WriteLine("[Processor] ----------> \t numMaxAvailableProcessor: {0}", numMaxAvailableProcessor.ToString());
                 Thread.Sleep(10000);
             }
         }

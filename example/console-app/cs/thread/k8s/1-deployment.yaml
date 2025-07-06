@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: thread-app
+  namespace: thread-ex
+  labels:
+    app.kubernetes.io/name: thread-app
+spec:
+  replicas: 1 #number of replicas generated  
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1 # The maxSurge property controls the maximum number of additional pods that can be created during a rolling update
+      maxUnavailable: 1 # The maxUnavailable property determines the maximum number or percentage of pods that can be unavailable during a rolling update
+  selector:
+    # Assigns labels to the pods for future selection
+    matchLabels:
+      app.kubernetes.io/name: thread-app
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: thread-app    
+    spec:
+      containers:
+      - name: thread-app
+        image: thread-app:1.0
+        imagePullPolicy: Never
+        # securityContext:
+        #   allowPrivilegeEscalation: false
+        #   capabilities:
+        #     drop:
+        #       - ALL
+        #   runAsNonRoot: true
+        #   readOnlyRootFilesystem: true
+        #   runAsUser: 10001
+        #   runAsGroup: 10001
+        #   seccompProfile:
+        #     type: RuntimeDefault
+        # ports:
+        # - containerPort: 6068
+        #   name: http
+        resources:
+          limits:
+            cpu: "3000m"
+            memory: "1Gi"
+          requests:
+            cpu: "3000m"
+            memory: "512Mi"

@@ -1,0 +1,10 @@
+minikube image build -t thread-app:1.0 .
+
+kubectl delete -f ./k8s; kubectl apply -f ./k8s
+
+docker build -t thread-app:1.0 .
+
+docker run -d <container_id>
+
+---
+minikube image build -t thread-app:1.0 . && kubectl delete -f ./k8s; kubectl apply -f ./k8s && kubectl get all -n thread-ex
