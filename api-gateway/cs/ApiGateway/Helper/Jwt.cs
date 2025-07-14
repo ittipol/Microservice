@@ -1,5 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using Microsoft.IdentityModel.Tokens;
 
 namespace ApiGateway.Helper.Cryptography
@@ -17,7 +18,7 @@ namespace ApiGateway.Helper.Cryptography
             if (strVal.Length == 2)
             {
                 var token = strVal[1];
-                result = Verify(token, secretKey);
+                result = JwtHmacSha256Verify(token, secretKey);
             }
 
             return result;
@@ -52,15 +53,14 @@ namespace ApiGateway.Helper.Cryptography
             }
             catch (Exception ex)
             {
-                var x = ex.GetType();
-                Console.WriteLine($"JWT Verify Type: {x}");
+                Console.WriteLine($"JWT Verify Type: {ex.GetType()}");
                 Console.WriteLine($"JWT Verify error: {ex.Message}");
             }
 
             return id;
         }
 
-        private static bool Verify(string token, byte[] secretKey)
+        public static bool JwtHmacSha256Verify(string token, byte[] secretKey)
         {
             var result = false;
             try
@@ -81,32 +81,101 @@ namespace ApiGateway.Helper.Cryptography
 
                 if (principal != null)
                 {
-                    var id = principal.Claims.FirstOrDefault(c => c.Type.Equals("id"))?.Value;
-
-                    Console.WriteLine($"id: {id}");
-
-                    // foreach (var claim in principal.Claims) {
-                    //     Console.WriteLine($"claim: {claim}");
-                    //     Console.WriteLine($"Type: {claim.Type}");
-                    //     Console.WriteLine($"-----");
-                    // }
+                    foreach (var item in principal.Claims)
+                    {
+                        Console.WriteLine($"Claims: {item.Type} : {item.Value}");
+                    }
                 }
-
-                // Console.WriteLine($"principal: {principal}");
-                // Console.WriteLine($"validatedToken: {validatedToken}");
 
                 result = true;
             }
             catch (Exception ex)
             {
-                var x = ex.GetType();
-                Console.WriteLine($"JWT Verify Type: {x}");
+                Console.WriteLine($"JWT Verify Type: {ex.GetType()}");
                 Console.WriteLine($"JWT Verify error: {ex.Message}");
             }
 
-            // var roleClaim = principal.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value;
+            Console.WriteLine($"JwtHmacSha256Verify Verify: {result}");
 
-            Console.WriteLine($"JWT Verify: {result}");
+            return result;
+        }
+
+        public static bool JwtRsaShaVerify(RSA rsa, string token)
+        {
+            var result = false;
+            try
+            {
+                var tokenHandler = new JwtSecurityTokenHandler();
+
+                var validationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new RsaSecurityKey(rsa),
+                    ValidateIssuer = false,
+                    ValidateAudience = false,
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.Zero
+                };
+
+                ClaimsPrincipal principal = tokenHandler.ValidateToken(token, validationParameters, out SecurityToken validatedToken);
+
+                if (principal != null)
+                {
+                    foreach (var item in principal.Claims)
+                    {
+                        Console.WriteLine($"Claims: {item.Type} : {item.Value}");
+                    }
+                }
+
+                result = true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"JWT Verify Type: {ex.GetType()}");
+                Console.WriteLine($"JWT Verify error: {ex.Message}");
+            }
+
+            Console.WriteLine($"JwtRsaShaVerify Verify: {result}");
+
+            return result;
+        }
+
+        public static bool JwtEcdsaShaVerify(ECDsa ecdsa, string token)
+        {
+            var result = false;
+            try
+            {
+                var tokenHandler = new JwtSecurityTokenHandler();
+
+                var validationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new ECDsaSecurityKey(ecdsa),
+                    ValidateIssuer = false,
+                    ValidateAudience = false,
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.Zero
+                };
+
+                ClaimsPrincipal principal = tokenHandler.ValidateToken(token, validationParameters, out SecurityToken validatedToken);
+
+                if (principal != null)
+                {
+                    foreach (var item in principal.Claims)
+                    {
+                        Console.WriteLine($"Claims: {item.Type} : {item.Value}");
+                    }
+                }
+
+                result = true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"JWT Verify Type: {ex.GetType()}");
+                Console.WriteLine($"JWT Verify error: {ex.Message}");
+            }
+
+            Console.WriteLine($"JwtEcdsaShaVerify Verify: {result}");
 
             return result;
         }

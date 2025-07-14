@@ -9,20 +9,24 @@ namespace ApiGateway.Helper.Cryptography
         public static byte[] MergeEcPoint(byte[] x, byte[] y)
         {
             var ecPoint = new byte[x.Length + y.Length + 1];
+
             var c = 0;
 
             ecPoint[c++] = 4;
 
-
             for (int i = 0; i < x.Length; i++)
             {
                 ecPoint[c++] = x[i];
-            }
+            }            
 
             for (int i = 0; i < y.Length; i++)
             {
                 ecPoint[c++] = y[i];
             }
+
+            // ecPoint[0] = 4;
+            // Array.Copy(x, 0, ecPoint, 1, x.Length);
+            // Array.Copy(y, 0, ecPoint, x.Length + 1, y.Length);
 
             return ecPoint;
         }
@@ -50,7 +54,7 @@ namespace ApiGateway.Helper.Cryptography
             var ecdh = ECDiffieHellman.Create(ECCurve.NamedCurves.nistP256);
             ecdh.ImportParameters(new ECParameters
             {
-                Curve = ECCurve.NamedCurves.nistP256, // you'd need to know the curve before hand
+                Curve = ECCurve.NamedCurves.nistP256,
                 // D = privateKeyBytes, // optional (private keys only)
                 Q = new ECPoint
                 {

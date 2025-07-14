@@ -1,1 +1,20 @@
 minikube image build -t api-gateway:1.0 .
+
+// RSA
+// Generate a Private Key
+openssl genpkey -algorithm RSA -out private_key.pem -pkeyopt rsa_keygen_bits:2048
+openssl genpkey -algorithm RSA -out private_key.pem -pkeyopt rsa_keygen_bits:3072
+openssl genpkey -algorithm RSA -out private_key.pem -pkeyopt rsa_keygen_bits:4096
+
+// Extract the Public Key
+openssl rsa -in private_key.pem -pubout -out public_key.pem
+
+// ECDsa
+// List a curve names
+openssl ecparam -list_curves
+
+// Generate a Private Key
+openssl ecparam -name prime256v1 -genkey -noout -out private_key.pem
+
+// Extract the Public Key
+openssl ec -in private_key.pem -outform PEM -pubout -out public_key.pem

@@ -4,7 +4,7 @@ namespace ApiGateway.Enum
     {
         None,
         JWTWithHMAC,
-        JWSWithRSA,
-        ECDSA
+        JWTWithRS256,
+        JWTWithEC256
     }
 }

@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using ApiGateway.Model;
 
 namespace ApiGateway.Helper.Cryptography
 {
@@ -11,10 +12,14 @@ namespace ApiGateway.Helper.Cryptography
             using (Aes aes = Aes.Create())
             {
                 aes.KeySize = 256;
+                // aes.BlockSize = 128;
                 aes.Key = key;
                 aes.IV = iv;
                 aes.Mode = CipherMode.CBC;
                 aes.Padding = PaddingMode.PKCS7;
+
+                // aes.GenerateKey();
+                // aes.GenerateIV();
 
                 using (ICryptoTransform encryptor = aes.CreateEncryptor())
                 {
@@ -32,6 +37,7 @@ namespace ApiGateway.Helper.Cryptography
             using (Aes aes = Aes.Create())
             {
                 aes.KeySize = 256;
+                // aes.BlockSize = 128;
                 aes.Key = key;
                 aes.IV = iv;
                 aes.Mode = CipherMode.CBC;
@@ -44,6 +50,38 @@ namespace ApiGateway.Helper.Cryptography
             }
 
             return decryptedBytes;
-        }        
+        }
+
+        public static AesKey GetIVAndEncryptedData(string cipherText)
+        {
+            var cipherByte = Convert.FromBase64String(cipherText);
+
+            var iv = new byte[16];
+            var encryptedData = new byte[cipherByte.Length - iv.Length];
+
+            Array.Copy(cipherByte, 0, iv, 0, iv.Length);
+            Array.Copy(cipherByte, iv.Length, encryptedData, 0, encryptedData.Length);
+
+            return new AesKey
+            {
+                EncryptedData = encryptedData,
+                IV = iv
+            };
+        }
+
+        public static AesKey GetIVAndEncryptedData(byte[] cipherByte)
+        {
+            var iv = new byte[16];
+            var encryptedData = new byte[cipherByte.Length - iv.Length];
+
+            Array.Copy(cipherByte, 0, iv, 0, iv.Length);
+            Array.Copy(cipherByte, iv.Length, encryptedData, 0, encryptedData.Length);
+
+            return new AesKey
+            {
+                EncryptedData = encryptedData,
+                IV = iv
+            };
+        }
     }
 }

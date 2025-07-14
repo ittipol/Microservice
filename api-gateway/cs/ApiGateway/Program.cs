@@ -20,7 +20,7 @@ var builder = WebApplication.CreateBuilder(args);
 var useEncryption = builder.Configuration.GetSection("UseEncryption").Get<bool>();
 var key = Convert.FromBase64String(builder.Configuration.GetSection("AES:Secret").Get<string>() ?? "");
 var iv = Convert.FromBase64String(builder.Configuration.GetSection("AES:IV").Get<string>() ?? "");
-var jwtSecretKey = Convert.FromBase64String(builder.Configuration.GetSection("Jwt:Secret").Get<string>() ?? "");
+var jwtSecretKey = Convert.FromBase64String(builder.Configuration.GetSection("JwtHmacSha256:Secret").Get<string>() ?? "");
 
 builder.Services.AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
@@ -59,6 +59,13 @@ builder.Services.AddReverseProxy()
                 if(useEncryption)
                 {
                     var cipherBytes = Convert.FromBase64String(body);
+
+                    // Extract IV and data
+                    // var result = AESHelper.GetIVAndEncryptedData(cipherBytes);
+
+                    // Get shared key from storage
+                    // key = "";
+
                     bytes = AESHelper.Decrypt(cipherBytes, key, iv);
                     Console.WriteLine($"AddRequestTransform [Decrypt]: {Encoding.UTF8.GetString(bytes)}");
                     // body = Encoding.UTF8.GetString(bytes);
@@ -79,7 +86,7 @@ builder.Services.AddReverseProxy()
 
         transforms.AddResponseTransform(async responseContext =>
         {
-            responseContext.HttpContext.Response.Headers.Append("key", "value");
+            // responseContext.HttpContext.Response.Headers.Append("key", "value"); // example for adding header
             responseContext.HttpContext.Response.Headers.Remove(HeaderNames.CacheControl);
 
             var stream = await responseContext.ProxyResponse!.Content.ReadAsStreamAsync();
@@ -94,6 +101,11 @@ builder.Services.AddReverseProxy()
                 if(useEncryption)
                 {
                     var plaintextBytes = Encoding.UTF8.GetBytes(body);
+
+                    // Get shared key from storage
+                    // key = "";
+                    // iv --> random 16 byte
+
                     var cipherBytes = AESHelper.Encrypt(plaintextBytes, key, iv);
                     var base64 = Convert.ToBase64String(cipherBytes);
                     Console.WriteLine($"AddResponseTransform [Encrypt]: {base64}");
@@ -101,7 +113,7 @@ builder.Services.AddReverseProxy()
                 }
                 else
                 {
-                    // body = body.Replace("Bravo", "Charlie");
+                    // body = body.Replace("data", "new-data");
                     bytes = Encoding.UTF8.GetBytes(body);
                 }
 
@@ -217,7 +229,7 @@ app.Map("/health", async context =>
     await context.Response.WriteAsync("OK");
 });
 
-if(app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment())
 {
     // app.Map("/ecdh", async context =>
     // {
@@ -338,6 +350,7 @@ if(app.Environment.IsDevelopment())
         // Fix other party key pair for test
         var privateKey = "c711e5080f2b58260fe19741a7913e8301c1128ec8e80b8009406e5047e6e1ef";
         var publicKey = "04e33993f0210a4973a94c26667007d1b56fe886e8b3c2afdd66aa9e4937478ad20acfbdc666e3cec3510ce85d40365fc2045e5adb7e675198cf57c6638efa1bdb";
+        // ===
 
         var privateKeyBytes = Convert.FromHexString(privateKey);
         var publicKeyBytes = Convert.FromHexString(publicKey);
@@ -380,10 +393,57 @@ if(app.Environment.IsDevelopment())
         string jsonString = JsonSerializer.Serialize(new KeyMaterial
         {
             PublicKey = Convert.ToHexString(serverPublicKey),
+            SigningPublicKey = KeyId.SignPublicKey(serverPublicKey, ECDHPublicKeySigningType.ECDSA),
             SharedKey = Convert.ToBase64String(sharedKey), // send to client for test key matching
-            KeyId = KeyId.GenKeyId(true, KeyIdSigningType.JWSWithRSA)
+            KeyId = KeyId.SignKeyId(KeyId.GenKeyId(), KeyIdSigningType.JWTWithEC256)
         });
 
+        await context.Response.WriteAsJsonAsync(jsonString);
+    });
+
+    app.Map("/key-exchange", async context =>
+    {
+        var headers = context.Request.Headers;
+
+        var pubKeyFound = headers.ContainsKey("public-key");
+        Console.WriteLine($"pubKeyFound: {pubKeyFound}");
+
+        var jsonString = string.Empty;
+
+        if (headers.TryGetValue("public-key", out var clientPublicKeyHex))
+        {
+            try
+            {
+                // var clientPublicKey = headers["public-key"];
+
+                var serverKey = ECDiffieHellman.Create(ECCurve.NamedCurves.nistP256);
+                var serverPublicKey = ECDHHelper.ExportPublicKey(serverKey);
+
+                var clientPublicKey = ECDHHelper.ImportPublicKey(clientPublicKeyHex.ToString());
+
+                // compute shared key
+                var sharedKey = serverKey.DeriveKeyMaterial(clientPublicKey);
+
+                var keyId = KeyId.GenKeyId();
+
+                // save shared key to storage
+                // key:value
+                // keyId : sharedKey
+
+                jsonString = JsonSerializer.Serialize(new KeyMaterial
+                {
+                    PublicKey = Convert.ToHexString(serverPublicKey),
+                    SigningPublicKey = KeyId.SignPublicKey(serverPublicKey, ECDHPublicKeySigningType.ECDSA),
+                    SharedKey = Convert.ToBase64String(sharedKey), // send to client for test key matching
+                    KeyId = KeyId.SignKeyId(keyId, KeyIdSigningType.JWTWithEC256)
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+        
         await context.Response.WriteAsJsonAsync(jsonString);
     });
 
