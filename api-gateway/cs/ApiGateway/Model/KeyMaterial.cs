@@ -1,10 +1,7 @@
 namespace ApiGateway.Model
 {
-    public class KeyMaterial
+    public class KeyMaterial : KeyData
     {
         public required string PublicKey { get; set; }
-        public required string SigningPublicKey { get; set; }
-        public required string SharedKey { get; set; }
-        public required string KeyId { get; set; }
     }
 }

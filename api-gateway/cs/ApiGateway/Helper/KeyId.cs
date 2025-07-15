@@ -16,9 +16,6 @@ namespace ApiGateway.Helper
 
             var randomByte = Utils.RandomByte();
 
-            Console.WriteLine("Byte[0] ---> {0}", randomByte[0].ToString());
-            Console.WriteLine(Hash.ComputeHash(randomByte).Length);
-
             return Convert.ToHexString(Hash.ComputeHash(randomByte));
         }
         public static string SignKeyId(string keyId, KeyIdSigningType keyIdSigningType = KeyIdSigningType.None)

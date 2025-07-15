@@ -1,6 +1,6 @@
 namespace ApiGateway.Model
 {
-    public class AesKey
+    public class AesKeyData
     {
         public required byte[] EncryptedData { get; set; }
         public required byte[] IV { get; set; }

@@ -52,7 +52,7 @@ namespace ApiGateway.Helper.Cryptography
             return decryptedBytes;
         }
 
-        public static AesKey GetIVAndEncryptedData(string cipherText)
+        public static AesKeyData GetIVAndEncryptedData(string cipherText)
         {
             var cipherByte = Convert.FromBase64String(cipherText);
 
@@ -62,14 +62,14 @@ namespace ApiGateway.Helper.Cryptography
             Array.Copy(cipherByte, 0, iv, 0, iv.Length);
             Array.Copy(cipherByte, iv.Length, encryptedData, 0, encryptedData.Length);
 
-            return new AesKey
+            return new AesKeyData
             {
                 EncryptedData = encryptedData,
                 IV = iv
             };
         }
 
-        public static AesKey GetIVAndEncryptedData(byte[] cipherByte)
+        public static AesKeyData GetIVAndEncryptedData(byte[] cipherByte)
         {
             var iv = new byte[16];
             var encryptedData = new byte[cipherByte.Length - iv.Length];
@@ -77,11 +77,11 @@ namespace ApiGateway.Helper.Cryptography
             Array.Copy(cipherByte, 0, iv, 0, iv.Length);
             Array.Copy(cipherByte, iv.Length, encryptedData, 0, encryptedData.Length);
 
-            return new AesKey
+            return new AesKeyData
             {
                 EncryptedData = encryptedData,
                 IV = iv
             };
-        }
+        }        
     }
 }

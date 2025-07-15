@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text;
 
 namespace ApiGateway.Helper.Cryptography
 {
@@ -54,6 +55,17 @@ namespace ApiGateway.Helper.Cryptography
         public static bool EcdsaVerify(ECDsa ecdsa, byte[] data, byte[] signature)
         {
             return ecdsa.VerifyData(data, signature, HashAlgorithmName.SHA512, DSASignatureFormat.Rfc3279DerSequence);
+        }
+
+        public static void PrintByteArray(byte[] bytes)
+        {
+            var sb = new StringBuilder("print ---> byte[] { ");
+            foreach (var b in bytes)
+            {
+                sb.Append(b + ", ");
+            }
+            sb.Append("}");
+            Console.WriteLine(sb.ToString());
         }
     }
 }

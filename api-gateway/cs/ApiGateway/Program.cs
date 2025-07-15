@@ -390,12 +390,15 @@ if (app.Environment.IsDevelopment())
 
         // ===============================================================
 
+        var keyId = KeyId.GenKeyId();
+
         string jsonString = JsonSerializer.Serialize(new KeyMaterial
         {
             PublicKey = Convert.ToHexString(serverPublicKey),
-            SigningPublicKey = KeyId.SignPublicKey(serverPublicKey, ECDHPublicKeySigningType.ECDSA),
+            SignedPublicKey = KeyId.SignPublicKey(serverPublicKey, ECDHPublicKeySigningType.ECDSA),
             SharedKey = Convert.ToBase64String(sharedKey), // send to client for test key matching
-            KeyId = KeyId.SignKeyId(KeyId.GenKeyId(), KeyIdSigningType.JWTWithEC256)
+            KeyId = keyId,
+            SignedKeyId = KeyId.SignKeyId(keyId, KeyIdSigningType.JWTWithEC256)
         });
 
         await context.Response.WriteAsJsonAsync(jsonString);
@@ -414,11 +417,15 @@ if (app.Environment.IsDevelopment())
         {
             try
             {
-                // var clientPublicKey = headers["public-key"];
+                // var clientPublicKeyHex = headers["public-key"];
+
+                // for test
+                // clientPublicKeyHex = "04e33993f0210a4973a94c26667007d1b56fe886e8b3c2afdd66aa9e4937478ad20acfbdc666e3cec3510ce85d40365fc2045e5adb7e675198cf57c6638efa1bdb";
 
                 var serverKey = ECDiffieHellman.Create(ECCurve.NamedCurves.nistP256);
                 var serverPublicKey = ECDHHelper.ExportPublicKey(serverKey);
 
+                // Import client public key
                 var clientPublicKey = ECDHHelper.ImportPublicKey(clientPublicKeyHex.ToString());
 
                 // compute shared key
@@ -429,18 +436,33 @@ if (app.Environment.IsDevelopment())
                 // save shared key to storage
                 // key:value
                 // keyId : sharedKey
+                // ============================================
 
-                jsonString = JsonSerializer.Serialize(new KeyMaterial
+                // AES encrypt
+                var signingKey = new KeyData
+                {
+                    SignedPublicKey = KeyId.SignPublicKey(serverPublicKey, ECDHPublicKeySigningType.ECDSA),
+                    SharedKey = Convert.ToBase64String(sharedKey), // send to client for test key matching
+                    KeyId = keyId,
+                    SignedKeyId = KeyId.SignKeyId(keyId, KeyIdSigningType.JWTWithEC256)
+                };
+
+                var jsonStringByte = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(signingKey));
+                var encryptedKeyData = AESGCMHelper.AesGcmEncrypt(jsonStringByte, sharedKey);
+
+                // Test decrypt
+                // AESGCMHelper.AesGcmDecrypt(encryptedKeyData, sharedKey);
+
+                jsonString = JsonSerializer.Serialize(new KeyExchangeResponse
                 {
                     PublicKey = Convert.ToHexString(serverPublicKey),
-                    SigningPublicKey = KeyId.SignPublicKey(serverPublicKey, ECDHPublicKeySigningType.ECDSA),
-                    SharedKey = Convert.ToBase64String(sharedKey), // send to client for test key matching
-                    KeyId = KeyId.SignKeyId(keyId, KeyIdSigningType.JWTWithEC256)
+                    EncryptedKeyData = Convert.ToBase64String(encryptedKeyData)
                 });
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
+                jsonString = JsonSerializer.Serialize(new KeyExchangeResponse());
             }
         }
         
