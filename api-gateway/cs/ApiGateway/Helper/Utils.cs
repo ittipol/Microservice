@@ -47,6 +47,19 @@ namespace ApiGateway.Helper.Cryptography
             return ecdsa;
         }
 
+        public static ECDiffieHellman LoadEcdhKey(string ecdhKeyPath)
+        {
+            var ecdh = ECDiffieHellman.Create();
+            if (!File.Exists(ecdhKeyPath))
+            {
+                throw new FileNotFoundException("ECDiffieHellman key file not found", ecdhKeyPath);
+            }
+            var pemContents = File.ReadAllText(ecdhKeyPath);
+            ecdh.ImportFromPem(pemContents.ToCharArray());
+
+            return ecdh;
+        }
+
         public static bool RSAVerify(RSA rsa, byte[] data, byte[] signature)
         {
             return rsa.VerifyData(data, signature, HashAlgorithmName.SHA512, RSASignaturePadding.Pkcs1);
@@ -57,14 +70,14 @@ namespace ApiGateway.Helper.Cryptography
             return ecdsa.VerifyData(data, signature, HashAlgorithmName.SHA512, DSASignatureFormat.Rfc3279DerSequence);
         }
 
-        public static void PrintByteArray(byte[] bytes)
+        public static void PrintByteArray(byte[] bytes, string title = "")
         {
-            var sb = new StringBuilder("print ---> byte[] { ");
+            var sb = new StringBuilder($"print ---> {title} [{bytes.Length}] | [");
             foreach (var b in bytes)
             {
                 sb.Append(b + ", ");
             }
-            sb.Append("}");
+            sb.Append("]");
             Console.WriteLine(sb.ToString());
         }
     }

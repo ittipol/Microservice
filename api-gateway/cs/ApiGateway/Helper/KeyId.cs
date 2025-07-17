@@ -10,14 +10,39 @@ namespace ApiGateway.Helper
 {
     public static class KeyId
     {
-        public static string GenKeyId()
+        public static string GenKeyId(KeyIdType keyIdType = KeyIdType.SHA256)
         {
-            using SHA256 Hash = SHA256.Create();
+            var keyId = string.Empty;  
 
-            var randomByte = Utils.RandomByte();
+            var randomByte = Utils.RandomByte();          
 
-            return Convert.ToHexString(Hash.ComputeHash(randomByte));
-        }
+            switch (keyIdType)
+            {
+                case KeyIdType.SHA256:
+
+                    using (SHA256 hash = SHA256.Create())
+                    {
+                        keyId = Convert.ToHexString(hash.ComputeHash(randomByte));
+                    }
+
+                    break;
+
+                case KeyIdType.HmacSha256:
+
+                    keyId = HmacSha256Helper.ComputeHmacSha256(Guid.NewGuid().ToString(), Convert.ToHexString(randomByte));
+
+                    break;
+
+                case KeyIdType.GUID:
+
+                    keyId = Guid.NewGuid().ToString();
+
+                    break;
+            }
+
+            return keyId;
+        }        
+        
         public static string SignKeyId(string keyId, KeyIdSigningType keyIdSigningType = KeyIdSigningType.None)
         {
             using SHA256 Hash = SHA256.Create();
@@ -28,7 +53,7 @@ namespace ApiGateway.Helper
             // sb.Append(keyId);
             // sb.Append(Convert.ToHexString(Hash.ComputeHash(Encoding.UTF8.GetBytes(localDate.ToString("MMddyyyyHHmmss")))));
             // keyId = sb.ToString();
-            
+
             switch (keyIdSigningType)
             {
                 case KeyIdSigningType.JWTWithHMAC:
@@ -70,7 +95,7 @@ namespace ApiGateway.Helper
                 case KeyIdSigningType.JWTWithEC256:
 
                     var ecdsaKeyIdByte = Utils.RandomByte();
-                    
+
                     var ecdsaKeyId = Encoding.ASCII.GetString(ecdsaKeyIdByte, 0, ecdsaKeyIdByte.Length);
 
                     var ecdsa = Utils.LoadEcdsaKey("./key/ecdsa/private_key.pem");
@@ -89,6 +114,7 @@ namespace ApiGateway.Helper
 
                     // default: 
 
+                    // Example ====================
                     // var encryptionKey = RSA.Create(3072); // public key for encryption, private key for decryption
                     // var signingKey = ECDsa.Create(ECCurve.NamedCurves.nistP256); // private key for signing, public key for validation
 

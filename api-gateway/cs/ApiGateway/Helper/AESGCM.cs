@@ -16,19 +16,24 @@ namespace ApiGateway.Helper.Cryptography
             // For AES-GCM, the nonce must be 96-bits (12-bytes) in length
             var nonce = Utils.RandomByte(AesGcm.NonceByteSizes.MaxSize);
 
-            var ciphertext = new byte[plainBytes.Length];
+            var encryptedData = new byte[plainBytes.Length];
             var tag = new byte[AesGcm.TagByteSizes.MaxSize]; // tag size = 16
             // var associatedData = new byte[12];
 
-            aes.Encrypt(nonce, plainBytes, ciphertext, tag);
+            aes.Encrypt(nonce, plainBytes, encryptedData, tag);                    
 
-            var mergedData = new byte[nonce.Length + tag.Length + ciphertext.Length];
+            var cipherText = new byte[nonce.Length + tag.Length + encryptedData.Length];
 
-            Array.Copy(nonce, 0, mergedData, 0, nonce.Length);
-            Array.Copy(ciphertext, 0, mergedData, nonce.Length, ciphertext.Length);
-            Array.Copy(tag, 0, mergedData, nonce.Length + ciphertext.Length, tag.Length);
+            Array.Copy(nonce, 0, cipherText, 0, nonce.Length);
+            Array.Copy(encryptedData, 0, cipherText, nonce.Length, encryptedData.Length);
+            Array.Copy(tag, 0, cipherText, nonce.Length + encryptedData.Length, tag.Length);
 
-            return mergedData;
+            // Utils.PrintByteArray(nonce);
+            // Utils.PrintByteArray(encryptedData);
+            // Utils.PrintByteArray(tag);
+            // Console.WriteLine("cipherText length: {0}", cipherText.Length);
+
+            return cipherText;
         }
 
         public static string AesGcmDecrypt(byte[] ciphertext, byte[] key)

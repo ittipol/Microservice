@@ -107,6 +107,7 @@ builder.Services.AddReverseProxy()
                     // iv --> random 16 byte
 
                     var cipherBytes = AESHelper.Encrypt(plaintextBytes, key, iv);
+                    // var encryptedKeyData = AESGCMHelper.AesGcmEncrypt(stringByte, serverSharedKey);
                     var base64 = Convert.ToBase64String(cipherBytes);
                     Console.WriteLine($"AddResponseTransform [Encrypt]: {base64}");
                     bytes = Encoding.UTF8.GetBytes(base64);
@@ -234,88 +235,6 @@ if (app.Environment.IsDevelopment())
     // app.Map("/ecdh", async context =>
     // {
     //     // ECCurve: NIST P-256 (FIPS 186-3, section D.2.3), also known as secp256r1 or prime256v1
-
-    //     var headers = context.Request.Headers;
-
-    //     var pubKeyFound = headers.ContainsKey("public-key");
-    //     Console.WriteLine($"pubKeyFound: {pubKeyFound}");
-
-    //     using var reader = new StreamReader(context.Request.Body);
-
-    //     var body = await reader.ReadToEndAsync();
-    //     Console.WriteLine($"body: {body}");
-
-    //     // var c = new ECParameters
-    //     // {
-    //     //     Curve = ECCurve.NamedCurves.nistP256, // you'd need to know the curve before hand
-    //     //     D = privateKeyBytes,
-    //     //     Q = new ECPoint
-    //     //     {
-    //     //         X = publicKeyBytes.Skip(1).Take(32).ToArray(),
-    //     //         Y = publicKeyBytes.Skip(33).ToArray()
-    //     //     }
-    //     // };
-
-    //     // Client
-    //     using var client = ECDiffieHellman.Create(ECCurve.NamedCurves.nistP256);
-    //     byte[] clientPublicKey = client.PublicKey.ExportSubjectPublicKeyInfo();
-
-    //     // Server
-    //     using var server = ECDiffieHellman.Create(ECCurve.NamedCurves.nistP256);
-    //     server.KeySize = 256;
-    //     server.GenerateKey(ECCurve.NamedCurves.nistP256);
-
-    //     var ecParamters = server.ExportParameters(true);
-
-    //     // Private Key
-    //     byte[] privateKey = ecParamters.D;
-    //     Console.WriteLine("privateKey ---> {0}", privateKey.Length);
-
-    //     // Public key params
-    //     ECPoint publicKey = ecParamters.Q;
-
-    //     byte[] publicKeyX = publicKey.X;
-    //     byte[] publicKeyY = publicKey.Y;
-
-    //     Console.WriteLine("publicKeyX ---> {0}", publicKeyX.Length);
-
-    //     Console.WriteLine("publicKeyY ---> {0}", publicKeyY.Length);
-
-
-    //     var x = server.PublicKey.ExportSubjectPublicKeyInfo();
-    //     Console.WriteLine("xxxx ---> {0}", x.Length);
-    //     Console.WriteLine("xxxx ---> {0}", server.PublicKey.ToString());
-
-    //     // Fix for test
-    //     // 04e33993f0210a4973a94c26667007d1b56fe886e8b3c2afdd66aa9e4937478ad20acfbdc666e3cec3510ce85d40365fc2045e5adb7e675198cf57c6638efa1bdb
-    //     // 0403CEEFBFF158D68EFC150256E9694B20BE72FDC8B1971B0F6904B92C0D6765FEB5B6DA352CB71A95D4F00C527669E1EBE8CE5D9CDD8030F6EC9ABF76A9137C55
-    //     // 04778aae16b613d212ddfc9d62cb5784d5c665746faea92d65b5699cd21b14fc75d4fd2e961d50e746334b1d5640700508fdda2a7658e266f4ec7ea53ea69d205a
-    //     var clientPubKeyHex = "04e33993f0210a4973a94c26667007d1b56fe886e8b3c2afdd66aa9e4937478ad20acfbdc666e3cec3510ce85d40365fc2045e5adb7e675198cf57c6638efa1bdb";
-
-    //     Console.WriteLine(Convert.ToHexString(clientPublicKey));
-    //     Console.WriteLine(clientPubKeyHex);
-
-    //     var b = Cryptography.HexToByteArray(clientPubKeyHex);
-
-    //     Console.WriteLine("clientPublicKey: {0}", clientPublicKey.Length);
-    //     Console.WriteLine("b: {0}", b.Length);
-
-    //     // using var client2 = ECDiffieHellman.Create(ECCurve.NamedCurves.nistP256);
-    //     // client2.ImportSubjectPublicKeyInfo(clientPublicKey, out _);
-
-    //     // // compute shared key
-    //     // var sharedKey = server.DeriveKeyMaterial(client2.PublicKey);
-
-    //     // Console.WriteLine(sharedKey.Length);
-    //     // Console.WriteLine(Convert.ToBase64String(sharedKey));
-
-    //     // // AES
-    //     // byte[] plainBytes = Encoding.UTF8.GetBytes("Test");
-    //     // var cipherBytes = Cryptography.Encrypt(plainBytes, sharedKey, iv);
-    //     // await context.Response.WriteAsync(Convert.ToBase64String(cipherBytes));
-
-
-
     //     // ====================
     //     using ECDsa ecdsa = ECDsa.Create(ECCurve.NamedCurves.nistP256);
     //     server.KeySize = 256;
@@ -336,16 +255,6 @@ if (app.Environment.IsDevelopment())
     app.Map("/ecdh", async context =>
     {
         // ECCurve: NIST P-256 (FIPS 186-3, section D.2.3), also known as secp256r1 or prime256v1
-
-        var headers = context.Request.Headers;
-
-        var pubKeyFound = headers.ContainsKey("public-key");
-        Console.WriteLine($"pubKeyFound: {pubKeyFound}");
-
-        using var reader = new StreamReader(context.Request.Body);
-
-        var body = await reader.ReadToEndAsync();
-        Console.WriteLine($"body: {body}");
 
         // Fix other party key pair for test
         var privateKey = "c711e5080f2b58260fe19741a7913e8301c1128ec8e80b8009406e5047e6e1ef";
@@ -375,7 +284,7 @@ if (app.Environment.IsDevelopment())
         // ===============================================================
 
         // compute shared key
-        var sharedKey = server.DeriveKeyMaterial(clientPublicKey);
+        var sharedKey = server.DeriveRawSecretAgreement(clientPublicKey);
 
         Console.WriteLine("sharedKey length {0}", sharedKey.Length);
         Console.WriteLine(Convert.ToBase64String(sharedKey));
@@ -390,15 +299,126 @@ if (app.Environment.IsDevelopment())
 
         // ===============================================================
 
-        var keyId = KeyId.GenKeyId();
+        var keyId = KeyId.GenKeyId(KeyIdType.HmacSha256);
 
         string jsonString = JsonSerializer.Serialize(new KeyMaterial
         {
             PublicKey = Convert.ToHexString(serverPublicKey),
             SignedPublicKey = KeyId.SignPublicKey(serverPublicKey, ECDHPublicKeySigningType.ECDSA),
-            SharedKey = Convert.ToBase64String(sharedKey), // send to client for test key matching
+            // SharedKey = Convert.ToBase64String(sharedKey), // send to client for test key matching
             KeyId = keyId,
             SignedKeyId = KeyId.SignKeyId(keyId, KeyIdSigningType.JWTWithEC256)
+        });
+
+        await context.Response.WriteAsJsonAsync(jsonString);
+    });
+
+    app.Map("/gen-ecdh", async context =>
+    {
+        var ecdh = ECDiffieHellman.Create(ECCurve.NamedCurves.nistP256);
+        var privateKeyHex = Convert.ToHexString(ECDHHelper.ExportPrivateKey(ecdh));
+        var publicKeyHex = Convert.ToHexString(ECDHHelper.ExportPublicKey(ecdh));
+
+        Console.WriteLine("privateKeyHex: [{0}]\n", privateKeyHex);
+        Console.WriteLine("publicKeyHex: [{0}]\n", publicKeyHex);
+
+        await context.Response.WriteAsync("OK");
+    });
+
+    app.Map("/compare-ecdh", async context =>
+    {
+        // var clientPrivateKeyHex = "467807F7DF955D00C6B5F56E157657312933793D7E4D2262D0D05A2C89B31090"; // Gen From CS
+        var clientPrivateKeyHex = "c3ef6732ef04061b5e9d7b1fe7c80ab3b75be2b82522ee5c8b7bf0f84a08f2d8"; // Gen From Go
+        var clientPublicKeyHexTest = "04e5e251bbcf7a3826bfa1ff928218c12066320c71b5e74743821dfea709592328ceb2b2383dd60c2b266bcd3418c6b3d9730cf59fe34ad4ecb8bb51c7f37d50ae";
+
+        // var serverPrivateKeyHex = "B1F53D13D670338594E8158817B371DB50FF29E33CD0BEA60DFD6CED82C4AE34"; // Gen From CS
+        var serverPrivateKeyHex = "7cea6b94017e734867b9e5571ecd011a4a40d73f48c6f99f9ccc46633ad4dd75"; // Gen From Go
+        var serverPublicKeyHexTest = "04aecb0c26b8479149dad3634a9233e13f151b335f6429cd250da07eae093b9ebdf907f9736bc97b25ab9c8c4461f958256bd2eeb2edcc748d93844bd3526064ec";
+
+        var clientPrivateKey = ECDHHelper.ImportPrivateKey(clientPrivateKeyHex);
+        var serverPrivateKey = ECDHHelper.ImportPrivateKey(serverPrivateKeyHex);
+
+        // Test export public key
+        var clientPublicKeyHex = Convert.ToHexString(ECDHHelper.ExportPublicKey(clientPrivateKey));
+        var serverPublicKeyHex = Convert.ToHexString(ECDHHelper.ExportPublicKey(serverPrivateKey));
+
+        Console.WriteLine("clientPublicKeyHex: [{0}]\n", clientPublicKeyHex);
+        Console.WriteLine("serverPublicKeyHex: [{0}]\n", serverPublicKeyHex);
+
+        Console.WriteLine("clientPublicKeyHex match: \t[{0}]\n", clientPublicKeyHex.Equals(clientPublicKeyHexTest.ToUpper()));
+        Console.WriteLine("serverPublicKeyHex match: \t[{0}]\n", serverPublicKeyHex.Equals(serverPublicKeyHexTest.ToUpper()));
+
+        // ========================================================
+        
+        var ecdh = ECDiffieHellman.Create(ECCurve.NamedCurves.nistP256);
+        var clientSharedKey = serverPrivateKey.DeriveRawSecretAgreement(clientPrivateKey.PublicKey);
+        var serverSharedKey = serverPrivateKey.DeriveRawSecretAgreement(clientPrivateKey.PublicKey);
+
+        Console.WriteLine("clientSharedKey: {0}", Convert.ToBase64String(clientSharedKey));
+        Console.WriteLine("serverSharedKey: {0}", Convert.ToBase64String(serverSharedKey));
+
+        await context.Response.WriteAsync("OK");
+    });
+
+    app.Map("/test-ecdh", async context =>
+    {   
+        Console.WriteLine("---------------------------------------------------------------------------------------------------------");     
+        var headers = context.Request.Headers;
+        headers.TryGetValue("private-key", out var clientPrivateKeyHex);
+        headers.TryGetValue("public-key", out var clientPublicKeyHex);
+
+        // var clientPrivateKeyHex = "3e5645ca777e60e57bc449f7699797d6df7923a20fdb9a981d91d1b7aa377b7c";
+        // var clientPublicKeyHex = "0419206e599f95b8df90de88d82b6da1570eb40c3004482cb91aa30f07d9c1fabe6c620e5d1cc73f82296554563051c05d2fcf42afe6d11f7192bb3b3296eb5a9b";
+
+        Console.WriteLine("\nclientPrivateKeyHex: [{0}]", clientPrivateKeyHex);
+        Console.WriteLine("clientPublicKeyHex: [{0}]\n", clientPublicKeyHex);
+
+        // ======================================================
+        var serverEcdhInit = ECDiffieHellman.Create(ECCurve.NamedCurves.nistP256);
+        var serverPrivateKeyHex = Convert.ToHexString(ECDHHelper.ExportPrivateKey(serverEcdhInit));
+        var serverPrivateKey = ECDHHelper.ImportPrivateKey(serverPrivateKeyHex);
+        // ======================================================
+
+        // ======================================================
+        var clientPublicKey = ECDHHelper.ImportPublicKey(clientPublicKeyHex);
+        // ======================================================
+
+        // ======================================================
+        var serverSharedKey = serverPrivateKey.DeriveRawSecretAgreement(clientPublicKey);
+        // ======================================================
+
+        // ======================================================
+        // #1
+        // var clientPrivateKey = ECDiffieHellman.Create(ECCurve.NamedCurves.nistP256);
+        // #2
+        // var clientPrivateKey = Utils.LoadEcdhKey("./key/ecdsa/private_key.pem");
+        // #3        
+        var clientPrivateKey = ECDHHelper.ImportPrivateKey(clientPrivateKeyHex);
+        // clientPrivateKey.PublicKey
+        // ======================================================
+
+        // ======================================================
+        var serverPublicKeyHex = Convert.ToHexString(ECDHHelper.ExportPublicKey(serverPrivateKey));
+        var serverPublicKey = ECDHHelper.ImportPublicKey(serverPublicKeyHex);
+        // ======================================================
+
+        // ======================================================
+        // var clientSharedKey = clientPrivateKey.DeriveRawSecretAgreement(serverPrivateKey.PublicKey);
+        var clientSharedKey = clientPrivateKey.DeriveRawSecretAgreement(serverPublicKey);
+        // ======================================================
+
+        Console.WriteLine("\nserverSharedKey: {0}", Convert.ToBase64String(serverSharedKey));
+        Console.WriteLine("clientSharedKey: {0}", Convert.ToBase64String(clientSharedKey));
+        Console.WriteLine("is match: {0}\n", Convert.ToBase64String(serverSharedKey) == Convert.ToBase64String(clientSharedKey));
+
+        Console.WriteLine("serverPrivateKeyHex: [{0}]\n", serverPrivateKeyHex);
+        Console.WriteLine("serverPublicKeyHex: [{0}]\n", serverPublicKeyHex);
+
+        var jsonString = JsonSerializer.Serialize(new TestEcdhResponse
+        {
+            ServerPrivateKey = serverPrivateKeyHex,
+            ServerPublicKey = serverPublicKeyHex,
+            ServerSharedKey = Convert.ToBase64String(serverSharedKey)
         });
 
         await context.Response.WriteAsJsonAsync(jsonString);
@@ -417,21 +437,20 @@ if (app.Environment.IsDevelopment())
         {
             try
             {
-                // var clientPublicKeyHex = headers["public-key"];
+                Console.WriteLine($"=============> \tclientPublicKeyHex: {clientPublicKeyHex}");
 
-                // for test
-                // clientPublicKeyHex = "04e33993f0210a4973a94c26667007d1b56fe886e8b3c2afdd66aa9e4937478ad20acfbdc666e3cec3510ce85d40365fc2045e5adb7e675198cf57c6638efa1bdb";
+                var serverPrivateKey = ECDiffieHellman.Create(ECCurve.NamedCurves.nistP256);
+                var clientPublicKey = ECDHHelper.ImportPublicKey(clientPublicKeyHex);
+                var serverSharedKey = serverPrivateKey.DeriveRawSecretAgreement(clientPublicKey);
 
-                var serverKey = ECDiffieHellman.Create(ECCurve.NamedCurves.nistP256);
-                var serverPublicKey = ECDHHelper.ExportPublicKey(serverKey);
+                Console.WriteLine("sharedKey: {0}", Convert.ToBase64String(serverSharedKey));
 
-                // Import client public key
-                var clientPublicKey = ECDHHelper.ImportPublicKey(clientPublicKeyHex.ToString());
+                var keyId = KeyId.GenKeyId(KeyIdType.HmacSha256);
 
-                // compute shared key
-                var sharedKey = serverKey.DeriveKeyMaterial(clientPublicKey);
+                Console.WriteLine("KeyId: {0}", keyId);
 
-                var keyId = KeyId.GenKeyId();
+                var serverPublicKey = ECDHHelper.ExportPublicKey(serverPrivateKey);
+                Console.WriteLine("serverPublicKey: {0}", Convert.ToHexString(serverPublicKey));
 
                 // save shared key to storage
                 // key:value
@@ -441,22 +460,22 @@ if (app.Environment.IsDevelopment())
                 // AES encrypt
                 var signingKey = new KeyData
                 {
-                    SignedPublicKey = KeyId.SignPublicKey(serverPublicKey, ECDHPublicKeySigningType.ECDSA),
-                    SharedKey = Convert.ToBase64String(sharedKey), // send to client for test key matching
+                    SignedPublicKey = KeyId.SignPublicKey(serverPublicKey, ECDHPublicKeySigningType.ECDSA),                    
                     KeyId = keyId,
                     SignedKeyId = KeyId.SignKeyId(keyId, KeyIdSigningType.JWTWithEC256)
                 };
 
                 var jsonStringByte = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(signingKey));
-                var encryptedKeyData = AESGCMHelper.AesGcmEncrypt(jsonStringByte, sharedKey);
+                var encryptedKeyData = AESGCMHelper.AesGcmEncrypt(jsonStringByte, serverSharedKey);
 
                 // Test decrypt
-                // AESGCMHelper.AesGcmDecrypt(encryptedKeyData, sharedKey);
+                // AESGCMHelper.AesGcmDecrypt(encryptedKeyData, serverSharedKey);
 
                 jsonString = JsonSerializer.Serialize(new KeyExchangeResponse
                 {
                     PublicKey = Convert.ToHexString(serverPublicKey),
-                    EncryptedKeyData = Convert.ToBase64String(encryptedKeyData)
+                    EncryptedKeyData = Convert.ToBase64String(encryptedKeyData),
+                    SharedKey = Convert.ToBase64String(serverSharedKey), // send to client for test key matching
                 });
             }
             catch (Exception ex)
