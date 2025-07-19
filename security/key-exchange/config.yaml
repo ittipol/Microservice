@@ -1,0 +1,9 @@
+---
+appPort: 5055
+redis:
+  username: 
+  password: cGFzc3dvcmQ=
+  # host: redis-service.redis-database.svc.cluster.local
+  host: localhost
+  port: 6379
+  database: 0

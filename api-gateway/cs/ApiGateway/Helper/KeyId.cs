@@ -14,22 +14,22 @@ namespace ApiGateway.Helper
         {
             var keyId = string.Empty;  
 
-            var randomByte = Utils.RandomByte();          
-
             switch (keyIdType)
             {
                 case KeyIdType.SHA256:
 
                     using (SHA256 hash = SHA256.Create())
                     {
-                        keyId = Convert.ToHexString(hash.ComputeHash(randomByte));
+                        var randomByte32 = Utils.RandomByte();
+                        keyId = Convert.ToHexString(hash.ComputeHash(randomByte32));
                     }
 
                     break;
 
                 case KeyIdType.HmacSha256:
 
-                    keyId = HmacSha256Helper.ComputeHmacSha256(Guid.NewGuid().ToString(), Convert.ToHexString(randomByte));
+                    var randomByte64 = Utils.RandomByte(64);
+                    keyId = HmacSha256Helper.ComputeHmacSha256(Guid.NewGuid().ToString(), Convert.ToHexString(randomByte64));
 
                     break;
 
