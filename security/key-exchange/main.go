@@ -11,6 +11,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"key-exchange/database"
@@ -37,6 +38,7 @@ func main() {
 	e.Debug = true
 
 	e.GET("/health", func(c echo.Context) error {
+		fmt.Println("Test service, OK")
 		return c.String(http.StatusOK, "Test service, OK")
 	})
 
@@ -50,25 +52,27 @@ func main() {
 
 		clientPublicKeyHex := c.Request().Header.Get("public-key")
 
-		fmt.Printf("[Header] clientPublicKeyHex --> [ %v ]\n", clientPublicKeyHex)
+		fmt.Printf(">>>>> [Header] clientPublicKeyHex --> [ %v ]\n", clientPublicKeyHex)
 
-		// clientPublicKeyHex := "0445fc298d71c939ed81e57d80e8b4fed939f939db9c3d54600eb287ae7913bfe3352742c9b47abbc8bf5984758d34585d616c3d135ce3817d4581d4f26d03201f"
+		if clientPublicKeyHex == "" {
+			return echo.NewHTTPError(http.StatusBadRequest, errors.New("clientPublicKey not found"))
+		}
 
 		byteArray, err := hex.DecodeString(clientPublicKeyHex)
 		if err != nil {
-			log.Fatalf("Error decoding hex string: %v", err)
+			log.Printf("Error decoding hex string: %v", err)
 			return echo.NewHTTPError(http.StatusInternalServerError, err)
 		}
 
 		clientPublicKey, err := generatePublicKeyFromByte(byteArray)
 		if err != nil {
-			log.Fatalf("Error: %v", err)
+			log.Printf("Error: %v", err)
 			return echo.NewHTTPError(http.StatusInternalServerError, err)
 		}
 
 		serverPrivateKey, serverPublicKey, err := generateKeyPair()
 		if err != nil {
-			log.Fatalf("Error: %v", err)
+			log.Printf("Error: %v", err)
 			return echo.NewHTTPError(http.StatusInternalServerError, err)
 		}
 
@@ -86,7 +90,7 @@ func main() {
 
 		jsonData, err := json.Marshal(keyData)
 		if err != nil {
-			log.Fatalf("Error: %v", err)
+			log.Printf("Error: %v", err)
 			return echo.NewHTTPError(http.StatusInternalServerError, err)
 		}
 
@@ -101,9 +105,9 @@ func main() {
 			SharedKey:        serverSecretKeyBase64,
 		}
 
-		err = rdb.Set(context.Background(), keyId, serverSecretKeyBase64, 10*time.Minute).Err()
+		err = rdb.Set(context.Background(), keyId, serverSecretKeyBase64, 100*time.Minute).Err()
 		if err != nil {
-			log.Fatalf("Error: %v", err)
+			log.Printf("Error: %v", err)
 			return echo.NewHTTPError(http.StatusInternalServerError, err)
 		}
 
@@ -123,15 +127,31 @@ func main() {
 	// 	return c.String(http.StatusOK, fmt.Sprintf("Headers: %v", headers))
 	// })
 
-	// e.GET("/body", func(c echo.Context) error {
+	e.GET("/body", func(c echo.Context) error {
 
-	// 	json_map := make(map[string]interface{})
-	// 	if err := json.NewDecoder(c.Request().Body).Decode(&json_map); err != nil {
-	// 		return echo.NewHTTPError(http.StatusInternalServerError, err)
-	// 	}
+		fmt.Println("Test request body")
 
-	// 	return c.String(http.StatusOK, fmt.Sprintf("body: %v", json_map))
-	// })
+		json_map := make(map[string]interface{})
+		if err := json.NewDecoder(c.Request().Body).Decode(&json_map); err != nil {
+			log.Printf("Error: %v", err)
+			return echo.NewHTTPError(http.StatusInternalServerError, err)
+		}
+
+		return c.String(http.StatusOK, fmt.Sprintf("body: %v", json_map))
+	})
+
+	e.GET("/json", func(c echo.Context) error {
+
+		fmt.Println("Test json")
+
+		response := models.KeyExchangeResponse{
+			PublicKey:        "aaaa",
+			EncryptedKeyData: "bbbb",
+			SharedKey:        "cccc",
+		}
+
+		return c.JSON(http.StatusOK, response)
+	})
 
 	// e.GET("/cache/set", func(c echo.Context) error {
 
@@ -153,7 +173,7 @@ func generateKeyPair() (privKey *ecdh.PrivateKey, pubKey *ecdh.PublicKey, err er
 	curve := ecdh.P256() // curves secp256r1
 	privKey, err = curve.GenerateKey(rand.Reader)
 	if err != nil {
-		log.Fatalf("Error: %v", err)
+		log.Printf("Error: %v", err)
 		return
 	}
 
@@ -169,7 +189,7 @@ func generatePublicKeyFromByte(byteArray []byte) (clientPubKey *ecdh.PublicKey, 
 	curve := ecdh.P256()
 	clientPubKey, err = curve.NewPublicKey(byteArray)
 	if err != nil {
-		log.Fatalf("Error: %v", err)
+		log.Printf("Error: %v", err)
 	}
 
 	return
@@ -179,7 +199,7 @@ func deriveSharedSecret(myPrivKey *ecdh.PrivateKey, otherPartyPublicKey *ecdh.Pu
 
 	secretKey, err := myPrivKey.ECDH(otherPartyPublicKey)
 	if err != nil {
-		log.Fatalf("Error: %v", err)
+		log.Printf("Error: %v", err)
 	}
 
 	return secretKey
@@ -204,13 +224,13 @@ func generateKeyId() (encodedSignature string) {
 func aesGcmModeEncrypt(plaintext []byte, key []byte) string {
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Printf(err.Error())
 		return ""
 	}
 
 	gcm, err := cipher.NewGCM(block)
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Printf(err.Error())
 		return ""
 	}
 
@@ -220,7 +240,7 @@ func aesGcmModeEncrypt(plaintext []byte, key []byte) string {
 	// For AES-GCM, the nonce must be 96-bits (12-bytes) in length
 	nonce := make([]byte, gcm.NonceSize())
 	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
-		log.Fatalf(err.Error())
+		log.Printf(err.Error())
 		return ""
 	}
 
@@ -236,19 +256,19 @@ func aesGcmModeDecrypt(base64CipherText string, key []byte) string {
 
 	cipherText, err := base64.StdEncoding.DecodeString(base64CipherText)
 	if err != nil {
-		log.Fatalf("could not base64 decode: %v", err)
+		log.Printf("could not base64 decode: %v", err)
 		return ""
 	}
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Printf(err.Error())
 		return ""
 	}
 
 	gcm, err := cipher.NewGCM(block)
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Printf(err.Error())
 		return ""
 	}
 
@@ -259,7 +279,7 @@ func aesGcmModeDecrypt(base64CipherText string, key []byte) string {
 
 	decryptedPlaintext, err := gcm.Open(nil, decryptedNonce, encryptedData, nil)
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Printf(err.Error())
 		return ""
 	}
 
@@ -272,7 +292,7 @@ func randomByte(length int) []byte {
 	key := make([]byte, length)
 	_, err := io.ReadFull(rand.Reader, key)
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Printf(err.Error())
 		return make([]byte, 0)
 		// return []byte{}
 	}

@@ -49,6 +49,8 @@ namespace ApiGateway.Helper
 
             DateTime localDate = DateTime.Now;
 
+            var key = Convert.FromBase64String("Vp6PmaOQGrny8sOdUQhiM7j12z2qcIT85no76DRQeJQVMYXp+bp9jDGw7oHFfP1nmVHu3ZXLvzTpNHP6FaVyTw==");
+
             // var sb = new StringBuilder();
             // sb.Append(keyId);
             // sb.Append(Convert.ToHexString(Hash.ComputeHash(Encoding.UTF8.GetBytes(localDate.ToString("MMddyyyyHHmmss")))));
@@ -58,14 +60,14 @@ namespace ApiGateway.Helper
             {
                 case KeyIdSigningType.JWTWithHMAC:
 
-                    var jwtSecretKey = Convert.FromBase64String("9PxBAw5rk3JqIQkV50VjX7Ek45YnmKoVmqutTs+GcH02Zs+d71tQEJJ0hMrUqsTnV71DYpGT4KQ40xrjATku2Q==");
+                    var JwtHmacSha256Key = Convert.FromBase64String("9PxBAw5rk3JqIQkV50VjX7Ek45YnmKoVmqutTs+GcH02Zs+d71tQEJJ0hMrUqsTnV71DYpGT4KQ40xrjATku2Q==");
 
-                    var securityKey = new SymmetricSecurityKey(jwtSecretKey);
+                    var securityKey = new SymmetricSecurityKey(JwtHmacSha256Key);
                     var signingCredentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
                     var claims = new List<Claim> {
                         new("keyId", keyId),
-                        // new("keyId2", Convert.ToHexString(Hash.ComputeHash(Encoding.UTF8.GetBytes(localDate.ToString("MMddyyyyHHmmss"))))),
+                        new("signature", HmacSha256Helper.ComputeHmacSha256(key, keyId)),
                     };
 
                     keyId = GenJwtTokenWithClaim(signingCredentials, localDate, claims);
@@ -85,7 +87,7 @@ namespace ApiGateway.Helper
 
                     var claims2 = new List<Claim> {
                         new("keyId", keyId),
-                        // new("keyId2", Convert.ToHexString(Hash.ComputeHash(Encoding.UTF8.GetBytes(localDate.ToString("MMddyyyyHHmmss"))))),
+                        new("signature", HmacSha256Helper.ComputeHmacSha256(key, keyId)),
                     };
 
                     keyId = GenJwtTokenWithClaim(signingCredentialsRS256, localDate, claims2);
@@ -105,7 +107,7 @@ namespace ApiGateway.Helper
 
                     var claims3 = new List<Claim> {
                         new("keyId", keyId),
-                        // new("keyId2", Convert.ToHexString(Hash.ComputeHash(Encoding.UTF8.GetBytes(localDate.ToString("MMddyyyyHHmmss"))))),
+                        new("signature", HmacSha256Helper.ComputeHmacSha256(key, keyId)),
                     };
 
                     keyId = keyId = GenJwtTokenWithClaim(signingCredentialsES256, localDate, claims3);

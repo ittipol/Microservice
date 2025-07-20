@@ -36,6 +36,30 @@ namespace ApiGateway.Helper.Cryptography
             return cipherText;
         }
 
+        public static TResult? AesGcmDecrypt<TResult>(byte[] ciphertext, byte[] key) where TResult : notnull
+        {
+            var aesGcmKeyData = GetNonceAndEncryptedData(ciphertext);
+
+            using var aes = new AesGcm(key, AesGcm.TagByteSizes.MaxSize);
+
+            var plaintextBytes = new byte[aesGcmKeyData.EncryptedData.Length];
+
+            aes.Decrypt(aesGcmKeyData.Nonce, aesGcmKeyData.EncryptedData, aesGcmKeyData.Tag, plaintextBytes);
+
+            if (typeof(TResult).IsAssignableTo(typeof(string)))
+            {
+                object value = Encoding.UTF8.GetString(plaintextBytes);
+                return (TResult)Convert.ChangeType(value, typeof(TResult));
+            }
+            else if (typeof(TResult).IsAssignableTo(typeof(byte[])))
+            {
+                object value = plaintextBytes;
+                return (TResult)Convert.ChangeType(value, typeof(TResult));
+            }
+
+            return default(TResult);  
+        }
+
         public static string AesGcmDecrypt(byte[] ciphertext, byte[] key)
         {
             var aesGcmKeyData = GetNonceAndEncryptedData(ciphertext);
@@ -48,6 +72,19 @@ namespace ApiGateway.Helper.Cryptography
 
             return Encoding.UTF8.GetString(plaintextBytes);
         }
+
+        // public static byte[] AesGcmDecryptToByte(byte[] ciphertext, byte[] key)
+        // {
+        //     var aesGcmKeyData = GetNonceAndEncryptedData(ciphertext);
+
+        //     using var aes = new AesGcm(key, AesGcm.TagByteSizes.MaxSize);
+
+        //     var plaintextBytes = new byte[aesGcmKeyData.EncryptedData.Length];
+
+        //     aes.Decrypt(aesGcmKeyData.Nonce, aesGcmKeyData.EncryptedData, aesGcmKeyData.Tag, plaintextBytes);
+
+        //     return plaintextBytes;
+        // }
 
         public static AesGcmKeyData GetNonceAndEncryptedData(byte[] cipherByte)
         {
