@@ -1,5 +1,5 @@
 ---
-appPort: 5055
+appPort: 5020
 redis:
   username: 
   password: cGFzc3dvcmQ=

@@ -29,8 +29,8 @@ func main() {
 	var c Config
 	c.loadConfig("config.yaml")
 
-	// rdb := initRedisConnection(c.RedisConfig)
-	rdb := initRedisClusterConnection()
+	rdb := initRedisConnection(c.RedisConfig)
+	// rdb := initRedisClusterConnection()
 
 	e := echo.New()
 	// Debug mode
@@ -40,11 +40,19 @@ func main() {
 		return c.String(http.StatusOK, "Test service, OK")
 	})
 
-	e.GET("/key-exchange", func(c echo.Context) error {
+	e.POST("/key-exchange", func(c echo.Context) error {
 
-		// clientPublicKeyHex := c.Request().Header.Get("public-key")
+		headers := c.Request().Header
 
-		clientPublicKeyHex := "0445fc298d71c939ed81e57d80e8b4fed939f939db9c3d54600eb287ae7913bfe3352742c9b47abbc8bf5984758d34585d616c3d135ce3817d4581d4f26d03201f"
+		for i, v := range headers {
+			fmt.Printf("[Header] %v --> %v\n", i, v)
+		}
+
+		clientPublicKeyHex := c.Request().Header.Get("public-key")
+
+		fmt.Printf("[Header] clientPublicKeyHex --> [ %v ]\n", clientPublicKeyHex)
+
+		// clientPublicKeyHex := "0445fc298d71c939ed81e57d80e8b4fed939f939db9c3d54600eb287ae7913bfe3352742c9b47abbc8bf5984758d34585d616c3d135ce3817d4581d4f26d03201f"
 
 		byteArray, err := hex.DecodeString(clientPublicKeyHex)
 		if err != nil {
@@ -68,10 +76,12 @@ func main() {
 
 		keyId := generateKeyId()
 
+		fmt.Printf("key-id: %s\n", keyId)
+
 		keyData := models.KeyData{
-			SignedPublicKey: "",
+			SignedPublicKey: "", // ECDSA
 			KeyId:           keyId,
-			SignedKeyId:     "",
+			SignedKeyId:     "", // JWTWithEC256
 		}
 
 		jsonData, err := json.Marshal(keyData)
@@ -97,7 +107,6 @@ func main() {
 			return echo.NewHTTPError(http.StatusInternalServerError, err)
 		}
 
-		// return c.String(http.StatusOK, fmt.Sprintf("ok"))
 		return c.JSON(http.StatusOK, response)
 	})
 

@@ -1,4 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.Net;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
@@ -13,21 +14,46 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.Net.Http.Headers;
+using StackExchange.Redis;
 using Yarp.ReverseProxy.Transforms;
 
 var builder = WebApplication.CreateBuilder(args);
 
 var useEncryption = builder.Configuration.GetSection("UseEncryption").Get<bool>();
-var key = Convert.FromBase64String(builder.Configuration.GetSection("AES:Secret").Get<string>() ?? "");
-var iv = Convert.FromBase64String(builder.Configuration.GetSection("AES:IV").Get<string>() ?? "");
+// var key = Convert.FromBase64String(builder.Configuration.GetSection("AES:Secret").Get<string>() ?? "");
+// var iv = Convert.FromBase64String(builder.Configuration.GetSection("AES:IV").Get<string>() ?? "");
 var jwtSecretKey = Convert.FromBase64String(builder.Configuration.GetSection("JwtHmacSha256:Secret").Get<string>() ?? "");
+
+var redisConn = new ConfigurationOptions
+{
+    AbortOnConnectFail = false,
+    User = "",
+    Password = Encoding.ASCII.GetString(Convert.FromBase64String("cGFzc3dvcmQ=")),
+    Ssl = false,
+    AsyncTimeout = 30000,
+    SyncTimeout = 10000,
+    ClientName = System.Environment.MachineName
+};
+
+redisConn.EndPoints.Add("localhost:6379");
+
+IConnectionMultiplexer redis = ConnectionMultiplexer.Connect(redisConn);
+IDatabase db = redis.GetDatabase();
+// redis.Close();
+
+var connected = db.Ping();
+Console.WriteLine("Cache: {0}", connected);
 
 builder.Services.AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
     .AddTransforms(transforms => {
 
         transforms.AddRequestTransform(async context =>
-        {            
+        {
+            Console.WriteLine("request id, {0}", context.HttpContext.Connection.Id);
+            // context.Request.Method
+            // context.Request.Path
+
             if (context.HttpContext.User.Identity!.IsAuthenticated)
             {
                 // Extract the JWT token from the incoming request
@@ -38,6 +64,7 @@ builder.Services.AddReverseProxy()
                 {
                     var id = JwtHelper.GetId(token, jwtSecretKey);
 
+                    // Add id to request header
                     context.ProxyRequest.Headers.Add("id", id);
 
                     // context.ProxyRequest.Headers.Authorization =
@@ -45,89 +72,155 @@ builder.Services.AddReverseProxy()
                 }
             }
 
+            // Remove Authorization from request header
             context.ProxyRequest.Headers.Remove("Authorization");
 
             using var reader = new StreamReader(context.HttpContext.Request.Body);
             
             var body = await reader.ReadToEndAsync();
-            if (!string.IsNullOrEmpty(body))
-            {                
-                Console.WriteLine($"AddRequestTransform [origin]: {body}");
+            
+            Console.WriteLine($"AddRequestTransform [origin]: {body}");
 
-                byte[]? bytes = null;
+            byte[]? bytes = null;
 
-                if(useEncryption)
+            if(useEncryption)
+            {                            
+                var isKeyIdFound = context.ProxyRequest.Headers.Contains("key-id");
+
+                Console.WriteLine($"AddRequestTransform [isKeyIdFound]: {isKeyIdFound}");
+
+                if (isKeyIdFound)
                 {
-                    var cipherBytes = Convert.FromBase64String(body);
+                    string keyId = context.ProxyRequest.Headers.Where(x => x.Key.Equals("key-id")).First().Value.FirstOrDefault("");
 
-                    // Extract IV and data
-                    // var result = AESHelper.GetIVAndEncryptedData(cipherBytes);
+                    Console.WriteLine($"AddRequestTransform [keyId]: {keyId}");
 
                     // Get shared key from storage
-                    // key = "";
+                    var key = db.StringGet(keyId).ToString();
 
-                    bytes = AESHelper.Decrypt(cipherBytes, key, iv);
-                    Console.WriteLine($"AddRequestTransform [Decrypt]: {Encoding.UTF8.GetString(bytes)}");
-                    // body = Encoding.UTF8.GetString(bytes);
+                    Console.WriteLine($"AddRequestTransform [useEncryption:key]: {key}");
+
+                    if (!string.IsNullOrEmpty(body))
+                    {
+                        var cipherBytes = Convert.FromBase64String(body);
+
+                        // Extract IV and data
+                        // var result = AESHelper.GetIVAndEncryptedData(cipherBytes);
+
+                        // bytes = AESHelper.Decrypt(cipherBytes, key, iv);
+                        // Console.WriteLine($"AddRequestTransform [Decrypt]: {Encoding.UTF8.GetString(bytes)}");
+
+                        // body = Encoding.UTF8.GetString(bytes);
+                    }
                 }
                 else
+                {
+                    // throw new ArgumentException("required parameter missing or invalid");
+                    context.HttpContext.Abort();
+                }            
+            }
+            else
+            {
+                if (!string.IsNullOrEmpty(body))
                 {
                     // body = body.Replace("Data", "value");
                     bytes = Encoding.UTF8.GetBytes(body);
                 }
+                
+            }
 
+            if (bytes != null) {
                 // Change Content-Length to match the modified body, or remove it
                 context.HttpContext.Request.Body = new MemoryStream(bytes);
                 // Request headers are copied before transforms are invoked, update any
                 // needed headers on the ProxyRequest
                 context.ProxyRequest.Content!.Headers.ContentLength = bytes.Length;
             }
+            
         });
 
         transforms.AddResponseTransform(async responseContext =>
         {
-            // responseContext.HttpContext.Response.Headers.Append("key", "value"); // example for adding header
-            responseContext.HttpContext.Response.Headers.Remove(HeaderNames.CacheControl);
+            Console.WriteLine("response id, {0}", responseContext.HttpContext.Connection.Id);
+            Console.WriteLine("response [CancellationToken], {0}", responseContext.CancellationToken.IsCancellationRequested);
 
-            var stream = await responseContext.ProxyResponse!.Content.ReadAsStreamAsync();
-            using var reader = new StreamReader(stream);
-            
-            var body = await reader.ReadToEndAsync();
+            if (responseContext.CancellationToken.IsCancellationRequested)
+            {
+                Console.WriteLine($"AddResponseTransform [abort]");
+            }
+            else
+            {
+                // responseContext.HttpContext.Response.Headers.Append("key", "value"); // example for adding header
+                responseContext.HttpContext.Response.Headers.Remove(HeaderNames.CacheControl);
 
-            if (!string.IsNullOrEmpty(body))
-            {            
-                byte[]? bytes = null;
+                var stream = await responseContext.ProxyResponse!.Content.ReadAsStreamAsync();
+                using var reader = new StreamReader(stream);
 
-                if(useEncryption)
+                var body = await reader.ReadToEndAsync();
+
+                byte[]? bytes = null;                                            
+
+                if (useEncryption)
                 {
-                    var plaintextBytes = Encoding.UTF8.GetBytes(body);
+                    var isKeyIdFound = responseContext.HttpContext.Request.Headers.TryGetValue("key-id", out var keyId);
 
-                    // Get shared key from storage
-                    // key = "";
-                    // iv --> random 16 byte
+                    Console.WriteLine($"AddResponseTransform [isKeyIdFound]: {isKeyIdFound}");
+                    Console.WriteLine($"AddResponseTransform [keyId]: {keyId}");
+                    Console.WriteLine($"AddResponseTransform [KeyExists]: {db.KeyExists(keyId.ToString())}");
 
-                    var cipherBytes = AESHelper.Encrypt(plaintextBytes, key, iv);
-                    // var encryptedKeyData = AESGCMHelper.AesGcmEncrypt(stringByte, serverSharedKey);
-                    var base64 = Convert.ToBase64String(cipherBytes);
-                    Console.WriteLine($"AddResponseTransform [Encrypt]: {base64}");
-                    bytes = Encoding.UTF8.GetBytes(base64);
+                    if (isKeyIdFound && db.KeyExists(keyId.ToString()))
+                    {
+                        var key = db.StringGet(keyId.ToString()).ToString();
+
+                        Console.WriteLine($"AddResponseTransform [key (Base64)]: {key}");
+
+                        var keyBytes = Convert.FromBase64String(key);
+
+                        if (!string.IsNullOrEmpty(body))
+                        {
+                            var plaintextBytes = Encoding.UTF8.GetBytes(body);
+
+                            var cipherBytes = AESGCMHelper.AesGcmEncrypt(plaintextBytes, keyBytes);
+
+                            var base64 = Convert.ToBase64String(cipherBytes);
+                            Console.WriteLine($"AddResponseTransform [Encrypted data]: {base64}");
+                            bytes = Encoding.UTF8.GetBytes(base64);
+                        }
+                    }                    
                 }
                 else
                 {
-                    // body = body.Replace("data", "new-data");
-                    bytes = Encoding.UTF8.GetBytes(body);
+                    if (!string.IsNullOrEmpty(body))
+                    {
+                        // body = body.Replace("data", "new-data");
+                        bytes = Encoding.UTF8.GetBytes(body);
+                    }
                 }
 
-                responseContext.SuppressResponseBody = true;
-                
-                // Change Content-Length to match the modified body, or remove it
-                responseContext.HttpContext.Response.ContentLength = bytes.Length;
-                // Response headers are copied before transforms are invoked, update
-                // any needed headers on the HttpContext.Response
-                await responseContext.HttpContext.Response.Body.WriteAsync(bytes);
-            }            
+                if (bytes != null)
+                {
+                    responseContext.SuppressResponseBody = true;
+
+                    // Change Content-Length to match the modified body, or remove it
+                    responseContext.HttpContext.Response.ContentLength = bytes.Length;
+                    // Response headers are copied before transforms are invoked, update
+                    // any needed headers on the HttpContext.Response
+                    await responseContext.HttpContext.Response.Body.WriteAsync(bytes);
+                }
+            }
         });
-    });
+    }
+);
+
+builder.Services.AddRequestTimeouts(options =>
+{
+    options.AddPolicy("customPolicy", TimeSpan.FromSeconds(30));
+});
+
+builder.Services.AddOutputCache(options =>
+{
+    options.AddPolicy("customPolicy", builder => builder.Expire(TimeSpan.FromSeconds(20)));
+});
 
 // builder.Services.AddDataProtection().UseCryptographicAlgorithms(
 //     new AuthenticatedEncryptorConfiguration
@@ -203,7 +296,10 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapReverseProxy(proxyPipeline => {
+app.UseOutputCache();
+
+app.MapReverseProxy(proxyPipeline =>
+{
     proxyPipeline.Use((context, next) =>
     {
         // Custom inline middleware
@@ -222,6 +318,10 @@ app.MapReverseProxy(proxyPipeline => {
 
         return next();
     });
+    
+    // proxyPipeline.UseSessionAffinity();
+    // proxyPipeline.UseLoadBalancing();
+    // proxyPipeline.UsePassiveHealthChecks();
 })
 .RequireAuthorization();
 
@@ -488,36 +588,36 @@ if (app.Environment.IsDevelopment())
         await context.Response.WriteAsJsonAsync(jsonString);
     });
 
-    app.Map("/encrypt", async context =>
-    {
-        using var reader = new StreamReader(context.Request.Body);
+    // app.Map("/encrypt", async context =>
+    // {
+    //     using var reader = new StreamReader(context.Request.Body);
                 
-        var body = await reader.ReadToEndAsync();
-        Console.WriteLine($"body (plain-text): {body}");
+    //     var body = await reader.ReadToEndAsync();
+    //     Console.WriteLine($"body (plain-text): {body}");
 
-        // byte[] key = new byte[32];  // 32-byte, 256bit
-        // new Random().NextBytes(key);
-        // byte[] iv = new byte[16];  // 16-byte initialization vector
-        // new Random().NextBytes(iv); // randomize the IV
+    //     // byte[] key = new byte[32];  // 32-byte, 256bit
+    //     // new Random().NextBytes(key);
+    //     // byte[] iv = new byte[16];  // 16-byte initialization vector
+    //     // new Random().NextBytes(iv); // randomize the IV
 
-        byte[] plainBytes = Encoding.UTF8.GetBytes(body);
+    //     byte[] plainBytes = Encoding.UTF8.GetBytes(body);
 
-        var cipherBytes = AESHelper.Encrypt(plainBytes, key, iv);
-        await context.Response.WriteAsync(Convert.ToBase64String(cipherBytes));
-    });
+    //     var cipherBytes = AESHelper.Encrypt(plainBytes, key, iv);
+    //     await context.Response.WriteAsync(Convert.ToBase64String(cipherBytes));
+    // });
 
-    app.Map("/decrypt", async context =>
-    {
-        using var reader = new StreamReader(context.Request.Body);
+    // app.Map("/decrypt", async context =>
+    // {
+    //     using var reader = new StreamReader(context.Request.Body);
                 
-        var body = await reader.ReadToEndAsync();
-        Console.WriteLine($"body (encrypted): {body}");
+    //     var body = await reader.ReadToEndAsync();
+    //     Console.WriteLine($"body (encrypted): {body}");
 
-        var cipherBytes = Convert.FromBase64String(body);
+    //     var cipherBytes = Convert.FromBase64String(body);
 
-        byte[] decryptedBytes = AESHelper.Decrypt(cipherBytes, key, iv);
-        await context.Response.WriteAsync(Encoding.UTF8.GetString(decryptedBytes));
-    });
+    //     byte[] decryptedBytes = AESHelper.Decrypt(cipherBytes, key, iv);
+    //     await context.Response.WriteAsync(Encoding.UTF8.GetString(decryptedBytes));
+    // });
 
     app.Map("/token", async context =>
     {
