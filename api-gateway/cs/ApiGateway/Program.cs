@@ -52,9 +52,11 @@ builder.Services.AddReverseProxy()
 
         transforms.AddRequestTransform(async context =>
         {
-            Console.WriteLine("\n\n====================================================== request id, {0} ===============", context.HttpContext.Connection.Id);
+            Console.WriteLine("\n\n::::::::====================================================== request id, {0} ===============", context.HttpContext.Connection.Id);
             Console.WriteLine($"AddRequestTransform [Method]: {context.HttpContext.Request.Method}");
             Console.WriteLine($"AddRequestTransform [Path]: {context.HttpContext.Request.Path}");
+
+            var session = context.HttpContext.Session;
 
             if (context.HttpContext.User.Identity!.IsAuthenticated)
             {
@@ -84,46 +86,34 @@ builder.Services.AddReverseProxy()
 
             byte[]? bytes = null;
 
-            if(ConfigHelper.IsUsingEncryption(encryptionConfig, context.HttpContext))
+            var sharedKey = session.GetString("key") ?? "";
+            Console.WriteLine($"AddRequestTransform [sharedKey]: {sharedKey}");
+
+            if (!string.IsNullOrEmpty(body))
             {
-                var isKeyIdFound = context.HttpContext.Request.Headers.TryGetValue("key-id", out var keyId);
-
-                Console.WriteLine($"AddRequestTransform [isKeyIdFound]: {isKeyIdFound}");
-                Console.WriteLine($"AddRequestTransform [keyId]: {keyId}");
-                Console.WriteLine($"AddRequestTransform [KeyExists]: {db.KeyExists(keyId.ToString())}"); ;
-
-                if (isKeyIdFound && db.KeyExists(keyId.ToString()))
+                try
                 {
-                    var key = db.StringGet(keyId.ToString()).ToString();
-
-                    var sb = new StringBuilder();
-                    sb.Append(keyId.ToString());
-                    sb.Append(context.HttpContext.Connection.Id);
-
-                    // Save temporary data
-                    db.StringSet(sb.ToString(), key, TimeSpan.FromMinutes(5));
-
-                    Console.WriteLine($"AddResponseTransform [keyTemp]: {sb.ToString()}");
-
-                    if (!string.IsNullOrEmpty(body))
+                    if (sharedKey != "")
                     {
-                        var keyBytes = Convert.FromBase64String(key);
+                        var keyBytes = Convert.FromBase64String(sharedKey);
                         var cipherBytes = Convert.FromBase64String(body);
 
                         bytes = AESGCMHelper.AesGcmDecrypt<byte[]>(cipherBytes, keyBytes);
                         Console.WriteLine($"AddRequestTransform [Decrypt]: {Encoding.UTF8.GetString(bytes)}");
                     }
+                    else if (!string.IsNullOrEmpty(body))
+                    {
+                        // body = body.Replace("Data", "value");
+                        bytes = Encoding.UTF8.GetBytes(body);
+                    }
                 }
-                else
+                catch (Exception)
                 {
-                    // throw new ArgumentException("required parameter missing or invalid");
-                    context.HttpContext.Abort();
+                    context.ProxyRequest.Dispose();
+                    context.HttpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
+                    await context.HttpContext.Response.WriteAsync(StatusCodes.Status500InternalServerError.ToString());
+                    return;
                 }
-            }
-            else if (!string.IsNullOrEmpty(body))
-            {
-                // body = body.Replace("Data", "value");
-                bytes = Encoding.UTF8.GetBytes(body);
             }
 
             if (bytes != null)
@@ -137,74 +127,69 @@ builder.Services.AddReverseProxy()
             
         });
 
-        transforms.AddResponseTransform(async responseContext =>
+        transforms.AddResponseTransform(async context =>
         {
-            Console.WriteLine("\n\n====================================================== response id, {0} ===============", responseContext.HttpContext.Connection.Id);
-            Console.WriteLine("response [CancellationToken], {0}", responseContext.CancellationToken.IsCancellationRequested);
+            Console.WriteLine("\n\n::::::::====================================================== response id, {0} ===============", context.HttpContext.Connection.Id);
+            Console.WriteLine("response [CancellationToken], {0}", context.CancellationToken.IsCancellationRequested);
+            
+            var session = context.HttpContext.Session;
 
-            if (!responseContext.CancellationToken.IsCancellationRequested)
+            // context.HttpContext.Response.Headers.Append("key", "value"); // example for adding header
+
+            // Remove some header
+            context.HttpContext.Response.Headers.Remove(HeaderNames.CacheControl);
+
+            var stream = await context.ProxyResponse!.Content.ReadAsStreamAsync();
+            using var reader = new StreamReader(stream);
+            var body = await reader.ReadToEndAsync();
+
+            Console.WriteLine($"AddResponseTransform [origin]: {body}");
+
+            byte[]? bytes = null;
+
+            var sharedKey = session.GetString("key") ?? "";
+            Console.WriteLine($"AddResponseTransform [sharedKey]: {sharedKey}");
+
+            if (!string.IsNullOrEmpty(body))
             {
-                // responseContext.HttpContext.Response.Headers.Append("key", "value"); // example for adding header
-                responseContext.HttpContext.Response.Headers.Remove(HeaderNames.CacheControl);
-
-                var stream = await responseContext.ProxyResponse!.Content.ReadAsStreamAsync();
-                using var reader = new StreamReader(stream);
-                var body = await reader.ReadToEndAsync();
-
-                byte[]? bytes = null;
-
-                if(ConfigHelper.IsUsingEncryption(encryptionConfig, responseContext.HttpContext))
+                try
                 {
-                    var isKeyIdFound = responseContext.HttpContext.Request.Headers.TryGetValue("key-id", out var keyId);
-
-                    Console.WriteLine($"AddResponseTransform [isKeyIdFound]: {isKeyIdFound}");
-                    Console.WriteLine($"AddResponseTransform [keyId]: {keyId}");
-                    Console.WriteLine($"AddResponseTransform [KeyExists]: {db.KeyExists(keyId.ToString())}");
-
-                    var sb = new StringBuilder();
-                    sb.Append(keyId.ToString());
-                    sb.Append(responseContext.HttpContext.Connection.Id);
-                    var keyTemp = sb.ToString();
-
-                    Console.WriteLine($"AddResponseTransform [keyTemp]: {keyTemp}");
-
-                    if (isKeyIdFound && db.KeyExists(keyTemp))
+                    if (sharedKey != "")
                     {
-                        var key = db.StringGet(keyTemp).ToString();
-                        db.KeyDelete(keyTemp);
+                        var keyBytes = Convert.FromBase64String(sharedKey);
+                        var plaintextBytes = Encoding.UTF8.GetBytes(body);
 
-                        Console.WriteLine($"AddResponseTransform [key (Base64)]: {key}");                        
+                        var cipherBytes = AESGCMHelper.AesGcmEncrypt(plaintextBytes, keyBytes);
 
-                        if (!string.IsNullOrEmpty(body))
-                        {
-                            var keyBytes = Convert.FromBase64String(key);
-                            var plaintextBytes = Encoding.UTF8.GetBytes(body);
+                        var base64 = Convert.ToBase64String(cipherBytes);
+                        Console.WriteLine($"AddResponseTransform [Encrypted data]: {base64}");
 
-                            var cipherBytes = AESGCMHelper.AesGcmEncrypt(plaintextBytes, keyBytes);
-
-                            var base64 = Convert.ToBase64String(cipherBytes);
-                            Console.WriteLine($"AddResponseTransform [Encrypted data]: {base64}");
-
-                            bytes = Encoding.UTF8.GetBytes(base64);
-                        }
-                    }                    
+                        bytes = Encoding.UTF8.GetBytes(base64);
+                    }
+                    else if (!string.IsNullOrEmpty(body))
+                    {
+                        // body = body.Replace("data", "new-data");
+                        bytes = Encoding.UTF8.GetBytes(body);
+                    }
                 }
-                else if (!string.IsNullOrEmpty(body))
+                catch (Exception)
                 {
-                    // body = body.Replace("data", "new-data");
-                    bytes = Encoding.UTF8.GetBytes(body);
-                }
+                    context.ProxyResponse.Dispose();
+                    context.HttpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
+                    await context.HttpContext.Response.WriteAsync(StatusCodes.Status500InternalServerError.ToString());
+                    return;
+                }                                    
+            }
 
-                if (bytes != null)
-                {
-                    responseContext.SuppressResponseBody = true;
+            if (bytes != null)
+            {
+                context.SuppressResponseBody = true;
 
-                    // Change Content-Length to match the modified body, or remove it
-                    responseContext.HttpContext.Response.ContentLength = bytes.Length;
-                    // Response headers are copied before transforms are invoked, update
-                    // any needed headers on the HttpContext.Response
-                    await responseContext.HttpContext.Response.Body.WriteAsync(bytes);
-                }
+                // Change Content-Length to match the modified body, or remove it
+                context.HttpContext.Response.ContentLength = bytes.Length;
+                // Response headers are copied before transforms are invoked, update
+                // any needed headers on the HttpContext.Response
+                await context.HttpContext.Response.Body.WriteAsync(bytes);
             }
         });
     }
@@ -244,8 +229,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-builder.Services.AddRateLimiter(options => {
-
+builder.Services.AddRateLimiter(options =>
+{
     // options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
     options.OnRejected = async (context, cancellationToken) =>
@@ -258,7 +243,7 @@ builder.Services.AddRateLimiter(options => {
     };
 
     // Policy #1 
-    options.AddPolicy("FixedWindow", context => 
+    options.AddPolicy("FixedWindow", context =>
         RateLimitPartition.GetFixedWindowLimiter(
             // partitionKey: context.Request.Path,           
             // partitionKey: context.Connection.RemoteIpAddress?.ToString(), // By IP Address
@@ -285,6 +270,16 @@ builder.Services.AddRateLimiter(options => {
     });
 });
 
+// Add to access session
+builder.Services.AddDistributedMemoryCache();
+
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromSeconds(60);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
+
 var app = builder.Build();
 
 app.UseRouting();
@@ -296,12 +291,58 @@ app.UseAuthorization();
 
 app.UseOutputCache();
 
+// Add to access session
+app.UseSession();
+
 app.MapReverseProxy(proxyPipeline =>
 {
+    proxyPipeline.Use(async (context, next) =>
+    {
+        var session = context.Session;        
+
+        Console.WriteLine("\n\n# >>>>>>>>>>>>>>>>>>>>>>>>>>\t\tCustom inline middleware [Before request]");
+        Console.WriteLine($"#\t[Before request] Session: {context.Session.Id}\n");
+        await next();
+        Console.WriteLine("\n\n#\t\tCustom inline middleware [After response]");
+
+        session.Clear();
+    });
+
     proxyPipeline.Use((context, next) =>
     {
+        var session = context.Session;   
+        
         // Custom inline middleware
-        Console.WriteLine("Custom inline middleware");
+        Console.WriteLine("\n\n#\t\tCustom inline middleware");
+        Console.WriteLine($"#\t[middleware] Connection: {context.Connection.Id}");
+        Console.WriteLine($"#\t[middleware] Session: {context.Session.Id}");
+        Console.WriteLine($"#\t[middleware] Path: {context.Request.Path}\n");
+
+        if (ConfigHelper.IsUsingEncryption(encryptionConfig, context))
+        {
+            Console.WriteLine($"#\t[middleware] IsUsingEncryption");
+            var isKeyIdFound = context.Request.Headers.TryGetValue("key-id", out var keyId);
+
+            Console.WriteLine($"#\t[middleware] [isKeyIdFound]: {isKeyIdFound}");
+            Console.WriteLine($"#\t[middleware] [keyId]: {keyId}");
+            Console.WriteLine($"#\t[middleware] [KeyExists]: {db.KeyExists(keyId.ToString())}"); ;
+
+            if (isKeyIdFound && db.KeyExists(keyId.ToString()))
+            {
+                var key = db.StringGet(keyId.ToString()).ToString();
+
+                if (key != "")
+                {
+                    // Save temporary data
+                    session.SetString("key", key);    
+                }                
+            }
+            else
+            {
+                context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                return context.Response.WriteAsync("keyId not found");
+            }
+        }
 
         // var x = context.Request.Path;
         // Console.WriteLine($"[middleware] Path: {x}");
@@ -326,14 +367,7 @@ app.MapReverseProxy(proxyPipeline =>
 
 app.Map("/health", async context =>
 {
-    var x = Utils.RandomByte(64);
-    var key = Convert.FromBase64String("Vp6PmaOQGrny8sOdUQhiM7j12z2qcIT85no76DRQeJQVMYXp+bp9jDGw7oHFfP1nmVHu3ZXLvzTpNHP6FaVyTw==");
-
-    var xx = HmacSha256Helper.ComputeHmacSha256(key, "message");
-
-    Console.WriteLine(xx);
-
-    await context.Response.WriteAsync(xx);
+    await context.Response.WriteAsync("ok");
 });
 
 if (app.Environment.IsDevelopment())

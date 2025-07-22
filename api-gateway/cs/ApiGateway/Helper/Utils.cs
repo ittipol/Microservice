@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 
-namespace ApiGateway.Helper.Cryptography
+namespace ApiGateway.Helper
 {
     public static class Utils
     {

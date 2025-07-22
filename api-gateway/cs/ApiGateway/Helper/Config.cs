@@ -1,6 +1,6 @@
 using ApiGateway.Model;
 
-namespace ApiGateway.Helper.Cryptography
+namespace ApiGateway.Helper
 {
     public static class ConfigHelper
     {
