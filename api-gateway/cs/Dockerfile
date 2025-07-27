@@ -8,8 +8,11 @@ WORKDIR /app/ApiGateway
 
 # Restore as distinct layers
 RUN dotnet restore
+
 # Build and publish a release
-RUN dotnet publish -c Release -o published
+# -p:UseAppHost=false = do not use self-contained deployments, use dotnet command directly to run app
+# This need .NET runtime installed on the target system
+RUN dotnet publish ./ '-p:TargetFrameworks=net8.0' '-p:PackTargetFramework=net8.0' -c Release -o published -p:UseAppHost=false
 
 # Build runtime image
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
