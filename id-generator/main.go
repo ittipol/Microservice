@@ -2,24 +2,61 @@ package main
 
 import (
 	"fmt"
+	"id-generator/database"
 	"id-generator/helpers"
 	"log"
 	"math/rand"
 	"strconv"
 	"sync"
 	"time"
+
+	"gorm.io/gorm"
 )
 
-// var mu sync.Mutex
 var wg sync.WaitGroup
+var mu sync.Mutex
 
 func main() {
+
+	// db := initDbConnection("")
+
+	func1()
+	// func2()
+}
+
+func func2() {
+
+	// Specific time
+	// t := time.Date(2025, time.January, 1, 12, 30, 0, 0, time.UTC)
+
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+
+		go func(i int) {
+			defer wg.Done()
+
+			mu.Lock()
+			defer mu.Unlock()
+
+			// gen timestamp
+			// timestamp := time.Now().UnixMilli()
+			timestamp := time.Now().UnixMicro()
+
+			fmt.Printf("\ntimestamp = %d\n", timestamp)
+			fmt.Printf("\nid (base62) = %s\n\n", helpers.ConvertToBase62(int(timestamp)))
+		}(i)
+	}
+
+	wg.Wait()
+}
+
+func func1() {
 
 	fmt.Printf("\n\n=======================================================================================\n\n")
 
 	// InitTimeZone()
 
-	node, err := helpers.NewIDGenerator(1023, "2025-07-27 16:43:07")
+	node, err := helpers.NewIDGenerator(1023, "2025-07-27 16:43:07") // use specific time (starting point for timestamp)
 	// node, err := helpers.NewIDGenerator(1023, "") // use current time as custom epoch
 	if err != nil {
 		log.Fatalln(err)
@@ -33,7 +70,7 @@ func main() {
 
 			defer wg.Done()
 
-			sleepTimeMs := rand.Intn(10000) + 5000
+			sleepTimeMs := rand.Intn(15000) + 2000
 			sleepDuration := time.Duration(sleepTimeMs) * time.Millisecond
 			fmt.Printf("\nSleeping for %d milliseconds...\n", sleepTimeMs)
 			time.Sleep(sleepDuration)
@@ -48,8 +85,8 @@ func main() {
 
 			binaryString := strconv.FormatInt(id, 2)
 
-			fmt.Printf("\n:: Generated ID value: %d\n", id)
-			fmt.Printf(":: Binary representation [%v]: %s\n", len(binaryString), binaryString)
+			fmt.Printf("\n:: Generated ID value (base10): %d\n", id)
+			fmt.Printf(":: Binary representation [bit length: %d/64 bits]: %s\n", len(binaryString), binaryString)
 
 			// insert id to user table
 			//
@@ -58,26 +95,6 @@ func main() {
 	}
 
 	wg.Wait()
-}
-
-func Base10(value int64) string {
-	return strconv.FormatInt(value, 10)
-}
-
-func BinaryToDecimal(binary string) (int, error) {
-	decimalValue := 0
-	base := 1 // Represents 2^0, 2^1, 2^2, ...
-
-	for i := len(binary) - 1; i >= 0; i-- {
-		digit := string(binary[i])
-		if digit == "1" {
-			decimalValue += base
-		} else if digit != "0" {
-			return 0, fmt.Errorf("invalid binary digit: %s", digit)
-		}
-		base *= 2
-	}
-	return decimalValue, nil
 }
 
 // func InitTimeZone() {
@@ -96,6 +113,6 @@ func BinaryToDecimal(binary string) (int, error) {
 // 	// fmt.Println(timeInUTC.In(location))
 // }
 
-// func initDbConnection(dsn string) *gorm.DB {
-// 	return database.GetDbConnection(dsn)
-// }
+func initDbConnection(dsn string) *gorm.DB {
+	return database.GetDbConnection(dsn)
+}
