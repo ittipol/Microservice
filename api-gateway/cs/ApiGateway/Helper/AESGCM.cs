@@ -14,7 +14,7 @@ namespace ApiGateway.Helper.Cryptography
             using var aes = new AesGcm(key, AesGcm.TagByteSizes.MaxSize);
 
             // For AES-GCM, the nonce must be 96-bits (12-bytes) in length
-            var nonce = Utils.RandomByte(AesGcm.NonceByteSizes.MaxSize);
+            var nonce = Utils.RandomByte(AesGcm.NonceByteSizes.MaxSize); // Generate a new, random nonce
 
             var encryptedData = new byte[plainBytes.Length];
             var tag = new byte[AesGcm.TagByteSizes.MaxSize]; // tag size = 16
@@ -33,6 +33,7 @@ namespace ApiGateway.Helper.Cryptography
             // Utils.PrintByteArray(tag);
             // Console.WriteLine("cipherText length: {0}", cipherText.Length);
 
+            // Contains ciphertext, nonce, and MAC (tag)
             return cipherText;
         }
 
@@ -98,9 +99,9 @@ namespace ApiGateway.Helper.Cryptography
             Array.Copy(cipherByte, nonce.Length, encryptedData, 0, encryptedData.Length);
             Array.Copy(cipherByte, nonce.Length + encryptedData.Length, tag, 0, tag.Length);
 
-            // Utils.PrintByteArray(nonce);
-            // Utils.PrintByteArray(encryptedData);
-            // Utils.PrintByteArray(tag);
+            Utils.PrintByteArray(nonce);
+            Utils.PrintByteArray(encryptedData);
+            Utils.PrintByteArray(tag);
 
             return new AesGcmKeyData
             {

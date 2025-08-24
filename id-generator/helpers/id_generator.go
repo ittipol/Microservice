@@ -24,7 +24,7 @@ type node struct {
 	mu             sync.Mutex
 }
 
-func NewIDGenerator(nodeId int64, customEpoch string) (*node, error) {
+func NewSnowflakeGenerator(nodeId int64, customEpoch string) (*node, error) {
 
 	var (
 		// customEpoch    string = "2025-07-27 16:43:07" // Specific a starting point for timestamp
@@ -46,7 +46,7 @@ func NewIDGenerator(nodeId int64, customEpoch string) (*node, error) {
 		lastTime:       -1,
 	}
 
-	fmt.Printf("maxNode: %v\n", node.maxNode)
+	fmt.Printf("Node: [%v/%v]\n", nodeId, node.maxNode)
 	fmt.Printf("maxSequence: %v\n", node.maxSequence)
 	fmt.Printf("timestampShift: %v\n", node.timestampShift)
 	fmt.Printf("nodeIdShift: %v\n", node.nodeIdShift)

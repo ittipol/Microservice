@@ -1,0 +1,90 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: id-generator-v1
+  namespace: id-generator
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/app: id-generator
+      version: v1
+  template:
+    metadata:      
+      labels:
+        app.kubernetes.io/app: id-generator
+        version: v1
+        # istio: monitor
+    spec:
+      serviceAccountName: id-generator-sa
+      initContainers:
+      - name: init-set
+        image: debian:12
+        # command:
+        # - /mnt/scripts/node-id.sh
+        command: [ "sh", "-c" ]
+        # args:
+        #   - export NODE_ID=${HOSTNAME##*-};
+        #     echo -en 'Env\n';
+        #     printenv NODE_ID;
+        #     pwd;
+        args:
+          - |
+            NODE_ID=${HOSTNAME##*-}
+            echo $NODE_ID
+            env
+
+            echo -n "Config from initContainers" > /mnt/data/message.conf
+            echo -n "$NODE_ID" > /mnt/data/node-id.conf
+        volumeMounts:
+        - name: scripts-vol
+          mountPath: /mnt/scripts
+        - name: conf-vol
+          mountPath: /mnt/data
+      containers:
+        - image: id-generator-api:1.0
+          imagePullPolicy: Never
+          name: id-generator
+          command: [ "sh", "-c"]
+          args:
+            - echo $(cat /mnt/data/node-id.conf);
+              export NODE_ID=$(cat /mnt/data/node-id.conf);
+              echo -en "Env --> Node ID (from /mnt/data/node-id.conf)\n";
+              echo "node id --> $(printenv NODE_ID)";
+              pwd;
+              ./app
+          # args:
+          # - while true; do
+          #     echo -en '\n';
+          #     printenv SERVICE VERSION;
+          #     sleep 10;
+          #   done;
+          env:
+            - name: SERVICE
+              value: id-generator
+            - name: VERSION
+              value: v1
+            - name: MY_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          ports:
+            - name: http
+              containerPort: 5055
+          volumeMounts:
+          - name: conf-vol
+            mountPath: /mnt/data
+          - name: example-vol
+            mountPath: /mnt/example
+      volumes:
+      - name: scripts-vol
+        configMap:
+          name: id-generator-script-config
+          defaultMode: 0555
+      - name: conf-vol
+        emptyDir: {}
+      - name: example-vol
+        configMap:
+          name: id-generator-config-example
+          defaultMode: 0644

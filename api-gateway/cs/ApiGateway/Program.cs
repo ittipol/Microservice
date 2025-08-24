@@ -98,6 +98,8 @@ builder.Services.AddReverseProxy()
                         var keyBytes = Convert.FromBase64String(sharedKey);
                         var cipherBytes = Convert.FromBase64String(body);
 
+                        Console.WriteLine($"AddRequestTransform [Byte length]: {cipherBytes.Length}");
+
                         bytes = AESGCMHelper.AesGcmDecrypt<byte[]>(cipherBytes, keyBytes);
                         Console.WriteLine($"AddRequestTransform [Decrypt]: {Encoding.UTF8.GetString(bytes)}");
                     }
@@ -107,8 +109,9 @@ builder.Services.AddReverseProxy()
                         bytes = Encoding.UTF8.GetBytes(body);
                     }
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    Console.WriteLine($"AddRequestTransform [Error]: {ex.Message}");
                     context.ProxyRequest.Dispose();
                     context.HttpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
                     await context.HttpContext.Response.WriteAsync(StatusCodes.Status500InternalServerError.ToString());
@@ -367,7 +370,7 @@ app.MapReverseProxy(proxyPipeline =>
 
 app.Map("/health", async context =>
 {
-    await context.Response.WriteAsync("ok");
+    await context.Response.WriteAsync("Running");
 });
 
 if (app.Environment.IsDevelopment())

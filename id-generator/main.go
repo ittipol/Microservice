@@ -6,22 +6,91 @@ import (
 	"id-generator/helpers"
 	"log"
 	"math/rand"
+	"net/http"
+	"os"
 	"strconv"
 	"sync"
 	"time"
 
+	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
 )
 
 var wg sync.WaitGroup
 var mu sync.Mutex
+var c Config
+
+func init() {
+	c.loadConfig("config.yaml")
+
+	hostname, err := os.Hostname()
+	if err != nil {
+		log.Fatalf("Error getting hostname: %v", err)
+	}
+	fmt.Printf("Machine hostname: %s\n", hostname)
+}
 
 func main() {
 
+	// var c Config
+	// c.loadConfig("config.yaml")
+
 	// db := initDbConnection("")
 
-	func1()
+	// Test generate an ID
+	// func1()
 	// func2()
+
+	nodeId := os.Getenv("NODE_ID")
+	fmt.Println("Node ID:", nodeId)
+
+	nodeIdNumber, err := strconv.ParseInt(nodeId, 10, 64)
+
+	if err != nil {
+		fmt.Printf("Error converting string to int64: %v\n", err)
+		return
+	}
+
+	node, err := helpers.NewSnowflakeGenerator(nodeIdNumber, "2025-07-27 16:43:07") // use specific time (starting point for timestamp)
+	// node, err := helpers.NewSnowflakeGenerator(1023, "") // use current time as custom epoch
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	e := echo.New()
+	// Debug mode
+	e.Debug = true
+
+	e.GET("/health", func(c echo.Context) error {
+		return c.String(http.StatusOK, "Service is running")
+	})
+
+	e.GET("/test", func(c echo.Context) error {
+		nodeId := os.Getenv("NODE_ID")
+		fmt.Println("Node ID:", nodeId)
+		return c.String(http.StatusOK, "Test")
+	})
+
+	e.GET("/generate", func(c echo.Context) error {
+
+		id, err := node.GenerateID()
+		if err != nil {
+			fmt.Println(err)
+			return echo.NewHTTPError(http.StatusInternalServerError, err)
+		}
+
+		binaryString := strconv.FormatInt(id, 2)
+
+		fmt.Printf("\n:: Generated ID value (base10): %d | length: %d\n", id, len(strconv.FormatInt(id, 10)))
+		fmt.Printf(":: Binary representation [bit length: %d/64 bits]: %s\n", len(binaryString), binaryString)
+
+		// insert id to user table
+		//
+
+		return c.String(http.StatusOK, strconv.FormatInt(id, 10))
+	})
+
+	e.Logger.Fatal(e.Start(fmt.Sprintf(":%v", c.AppPort)))
 }
 
 func func2() {
@@ -56,8 +125,8 @@ func func1() {
 
 	// InitTimeZone()
 
-	node, err := helpers.NewIDGenerator(1023, "2025-07-27 16:43:07") // use specific time (starting point for timestamp)
-	// node, err := helpers.NewIDGenerator(1023, "") // use current time as custom epoch
+	node, err := helpers.NewSnowflakeGenerator(1023, "2025-07-27 16:43:07") // use specific time (starting point for timestamp)
+	// node, err := helpers.NewSnowflakeGenerator(1023, "") // use current time as custom epoch
 	if err != nil {
 		log.Fatalln(err)
 	}

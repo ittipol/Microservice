@@ -1,0 +1,66 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: id-generator-config-example
+  namespace: id-generator
+data:
+  # Preserves all newlines and leading indentation
+  file-0.txt: |
+    item1
+    item2
+      item3
+    item4
+
+  # Replace newlines with spaces
+  file-1.txt: >
+    item1
+    item2
+      item3
+    item4
+  
+  # Add empty lines at the end of the block
+  file-2.txt: |+
+    Line 1
+    Line 2
+
+  # Remove empty lines at the end of the block
+  file-3.txt: |-
+    Line 1
+    Line 2
+
+  file-4.txt: >+
+    Line 1
+    Line 2
+
+  file-5.txt: >-
+    Line 1
+    Line 2
+
+# Result
+
+# display: file-0.txt 
+# item1
+# item2
+#   item3
+# item4
+
+# display: file-1.txt
+# item1 item2
+#   item3
+# item4
+
+# display: file-2.txt
+# Line 1
+# Line 2
+# 
+
+# display: file-3.txt
+# Line 1
+# Line 2/mnt/example $
+
+# display: file-4.txt
+# Line 1 Line 2
+# 
+
+# display: file-5.txt
+# Line 1 Line 2/mnt/example $

@@ -38,8 +38,8 @@ func main() {
 	e.Debug = true
 
 	e.GET("/health", func(c echo.Context) error {
-		fmt.Println("Test service, OK")
-		return c.String(http.StatusOK, "Test service, OK")
+		fmt.Println("Running...")
+		return c.String(http.StatusOK, "Running")
 	})
 
 	e.POST("/key-exchange", func(c echo.Context) error {
@@ -98,6 +98,8 @@ func main() {
 		cipherText := aesGcmModeEncrypt([]byte(jsonString), serverSecretKey)
 
 		serverSecretKeyBase64 := base64.StdEncoding.EncodeToString(serverSecretKey)
+
+		fmt.Printf("------ Secret key length: [%v] bytes | [%v] bits\n", len(serverSecretKey), len(serverSecretKey)*8)
 
 		response := models.KeyExchangeResponse{
 			PublicKey:        hex.EncodeToString(serverPublicKey.Bytes()),

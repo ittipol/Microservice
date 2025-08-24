@@ -19,9 +19,13 @@ WORKDIR /go-app
 COPY --from=build /go-app/app ./
 COPY --from=build /go-app/config.yaml ./
 
-EXPOSE 3000
+# RUN mkdir -p /usr/local/script && \
+#     echo '#!/bin/bash' > /usr/local/script/run.sh && \
+#     echo 'pwd && echo "$(env)"' >> /usr/local/script/run.sh && \
+#     chmod +x /usr/local/script/run.sh
+
+EXPOSE 5055
 
 USER 1000
 
 ENTRYPOINT ["./app"]
-# CMD ["tail", "-f", "/dev/null"]

@@ -1,6 +1,12 @@
 services:
-  dotnet:
-    build: .
-    container_name: dotnet_8_test
+  # dotnet:
+  #   build: .
+  #   container_name: dotnet_8_test
+  #   ports:
+  #     - 3000:3000
+
+  redis:
+    image: redis:6.2.7
+    container_name: redis
     ports:
-      - 3000:3000
+      - 6379:6379

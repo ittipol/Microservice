@@ -1,0 +1,12 @@
+minikube image build -t id-generator-api:1.0 .
+
+kubectl port-forward svc/id-generator-api -n id-generator 5055:5055
+
+kubectl port-forward id-generator-v1-0 -n id-generator 5055:5055
+
+kubectl get all -n id-generator
+
+kubectl logs id-generator-v1-0 -c init-set -n id-generator
+kubectl logs id-generator-v1-0 -c id-generator -n id-generator
+
+kubectl exec -it id-generator-v1-0 -n id-generator -c id-generator -- sh

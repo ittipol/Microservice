@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: id-generator-script-config
+  namespace: id-generator
+data:
+  node-id.sh: |
+    #!/bin/sh
+    NODE_ID=${HOSTNAME##*-}
+    echo "Starting initializing for pod $NODE_ID"
+    if [ "$NODE_ID" = "0" ]; then
+      cp /mnt/scripts/node-0.conf /mnt/data/node.conf
+    elif [ "$NODE_ID" = "1" ]; then
+      cp /mnt/scripts/node-1.conf /mnt/data/node.conf
+    elif [ "$NODE_ID" = "2" ]; then
+      cp /mnt/scripts/node-2.conf /mnt/data/node.conf
+    else
+      echo "Invalid node id"
+      exit 1
+    fi
+  node-0.conf: |
+    nodeId: 0
+  node-1.conf: |
+    nodeId: 1
+  node-2.conf: |
+    nodeId: 2
