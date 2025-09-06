@@ -140,7 +140,7 @@ builder.Services.AddReverseProxy()
             // context.HttpContext.Response.Headers.Append("key", "value"); // example for adding header
 
             // Remove some header
-            context.HttpContext.Response.Headers.Remove(HeaderNames.CacheControl);
+            // context.HttpContext.Response.Headers.Remove(HeaderNames.CacheControl);
 
             var stream = await context.ProxyResponse!.Content.ReadAsStreamAsync();
             using var reader = new StreamReader(stream);
@@ -162,15 +162,25 @@ builder.Services.AddReverseProxy()
                         var keyBytes = Convert.FromBase64String(sharedKey);
                         var plaintextBytes = Encoding.UTF8.GetBytes(body);
 
-                        var cipherBytes = AESGCMHelper.AesGcmEncrypt(plaintextBytes, keyBytes);
+                        var encryptedData = AESGCMHelper.AesGcmEncrypt(plaintextBytes, keyBytes);
 
-                        var base64 = Convert.ToBase64String(cipherBytes);
-                        Console.WriteLine($"AddResponseTransform [Encrypted data]: {base64}");
+                        var base64EncryptedData = Convert.ToBase64String(encryptedData);
+                        Console.WriteLine($"AddResponseTransform [encrypted data]: {base64EncryptedData}");
 
-                        bytes = Encoding.UTF8.GetBytes(base64);
+                        context.HttpContext.Response.Headers.ContentType = "text/plain; charset=utf-8";
+                        // context.HttpContext.Response.Headers.CacheControl = "no-cache";
+
+                        bytes = Encoding.UTF8.GetBytes(base64EncryptedData);
+
+                        // json encode
+                        // var dataObject = new ResponseData { EncryptedData = base64EncryptedData };
+                        // string jsonString = JsonSerializer.Serialize(dataObject);
+                        // bytes = Encoding.UTF8.GetBytes(jsonString);
                     }
                     else if (!string.IsNullOrEmpty(body))
                     {
+                        Console.WriteLine($"AddResponseTransform [not encrypted data]: {body}");
+
                         // body = body.Replace("data", "new-data");
                         bytes = Encoding.UTF8.GetBytes(body);
                     }
@@ -186,6 +196,8 @@ builder.Services.AddReverseProxy()
 
             if (bytes != null)
             {
+                Console.WriteLine($"Response [bytes]: {bytes.Length}");
+
                 context.SuppressResponseBody = true;
 
                 // Change Content-Length to match the modified body, or remove it

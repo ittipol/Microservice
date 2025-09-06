@@ -95,7 +95,8 @@ func main() {
 		}
 
 		jsonString := string(jsonData)
-		cipherText := aesGcmModeEncrypt([]byte(jsonString), serverSecretKey)
+		additionalData := []byte("Additional Authenticated Data")
+		encryptedData := aesGcmModeEncrypt([]byte(jsonString), serverSecretKey, additionalData)
 
 		serverSecretKeyBase64 := base64.StdEncoding.EncodeToString(serverSecretKey)
 
@@ -103,7 +104,7 @@ func main() {
 
 		response := models.KeyExchangeResponse{
 			PublicKey:        hex.EncodeToString(serverPublicKey.Bytes()),
-			EncryptedKeyData: cipherText,
+			EncryptedKeyData: encryptedData,
 			SharedKey:        serverSecretKeyBase64,
 		}
 
@@ -150,6 +151,25 @@ func main() {
 			PublicKey:        "aaaa",
 			EncryptedKeyData: "bbbb",
 			SharedKey:        "cccc",
+		}
+
+		return c.JSON(http.StatusOK, response)
+	})
+
+	e.POST("/json", func(c echo.Context) error {
+
+		headers := c.Request().Header
+
+		for i, v := range headers {
+			fmt.Printf("[Header] %v --> %v\n", i, v)
+		}
+
+		fmt.Println("#### [POST] Test json")
+
+		response := models.KeyExchangeResponse{
+			PublicKey:        "aaaa",
+			EncryptedKeyData: "yyyy",
+			SharedKey:        "zzzz",
 		}
 
 		return c.JSON(http.StatusOK, response)
@@ -223,7 +243,7 @@ func generateKeyId() (encodedSignature string) {
 	return
 }
 
-func aesGcmModeEncrypt(plaintext []byte, key []byte) string {
+func aesGcmModeEncrypt(plaintext []byte, key []byte, additionalData []byte) string {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		log.Printf(err.Error())
@@ -246,17 +266,23 @@ func aesGcmModeEncrypt(plaintext []byte, key []byte) string {
 		return ""
 	}
 
-	cipherText := gcm.Seal(nonce, nonce, plaintext, nil)
+	cipherText := gcm.Seal(nil, nonce, plaintext, additionalData)
 
-	fmt.Printf("cipherText: %v \n", cipherText)
-	fmt.Printf("Ciphertext (Hex): %x\n", cipherText)
+	// fmt.Printf("cipherText: %v \n", cipherText)
+	fmt.Printf("cipherText + tag (length): %v bytes\n", len(cipherText))
+	fmt.Printf("cipherText (length): %v bytes\n", len(cipherText)-16)
+	fmt.Printf("tag (length): 16 bytes\n")
+	// fmt.Printf("Ciphertext (Hex): %x\n", cipherText)
 
-	return base64.StdEncoding.EncodeToString(cipherText)
+	// Combine Nonce (12 Bytes) + Ciphertext (* Bytes) + Tag (16 Bytes)
+	encryptedData := append(nonce, cipherText...)
+
+	return base64.StdEncoding.EncodeToString(encryptedData)
 }
 
-func aesGcmModeDecrypt(base64CipherText string, key []byte) string {
+func aesGcmModeDecrypt(base64EncryptedData string, key []byte, additionalData []byte) string {
 
-	cipherText, err := base64.StdEncoding.DecodeString(base64CipherText)
+	encryptedData, err := base64.StdEncoding.DecodeString(base64EncryptedData)
 	if err != nil {
 		log.Printf("could not base64 decode: %v", err)
 		return ""
@@ -276,10 +302,11 @@ func aesGcmModeDecrypt(base64CipherText string, key []byte) string {
 
 	fmt.Printf("aesGcmModeDecrypt ====> NonceSize [ %v ]\n", gcm.NonceSize())
 
-	decryptedNonce := cipherText[:gcm.NonceSize()]
-	encryptedData := cipherText[gcm.NonceSize():]
+	// Separate nonce and (ciphertext + tag)
+	nonce := encryptedData[:gcm.NonceSize()]
+	cipherText := encryptedData[gcm.NonceSize():]
 
-	decryptedPlaintext, err := gcm.Open(nil, decryptedNonce, encryptedData, nil)
+	decryptedPlaintext, err := gcm.Open(nil, nonce, cipherText, additionalData)
 	if err != nil {
 		log.Printf(err.Error())
 		return ""

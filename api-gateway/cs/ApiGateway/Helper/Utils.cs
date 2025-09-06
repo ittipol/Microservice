@@ -12,6 +12,25 @@ namespace ApiGateway.Helper
 
             return bytes;
         }
+
+        public static byte[] Random256BitsKey()
+        {
+            // Generate a random 256-bit key (32 bytes)
+            byte[] key = new byte[32];
+            RandomNumberGenerator.Fill(key);
+
+            return key;
+        }
+
+        public static byte[] RandomNonce()
+        {
+            // Generate a random 12-byte nonce (recommended size for GCM)
+            byte[] nonce = new byte[12];
+            RandomNumberGenerator.Fill(nonce);
+
+            return nonce;
+        }
+
         public static byte[] HexToByteArray(String hex)
         {
             int NumberChars = hex.Length;
